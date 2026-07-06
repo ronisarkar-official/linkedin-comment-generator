@@ -2,10 +2,12 @@ import { buildCommentPrompt } from '../prompt-templates';
 import type {
 	CommentRequest,
 	CommentVariant,
+	HistoryEntry,
 	Tone,
 	UserSettings,
 } from '../types';
 import { LlmProviderError } from '../types';
+import { needsFreshnessRetry } from './freshness';
 
 export const OPENROUTER_MODEL = 'openrouter/free';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -162,99 +164,112 @@ function getMessageContent(
 export async function generateWithOpenRouter(
 	request: CommentRequest,
 	settings: UserSettings,
+	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
-	const prompt = buildCommentPrompt(request);
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const prompt = buildCommentPrompt(request, settings, history, attempt);
 
-	let response: Response;
-	try {
-		response = await fetch(OPENROUTER_ENDPOINT, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${settings.apiKey}`,
-				'Content-Type': 'application/json',
-				'X-OpenRouter-Title': 'LinkedIn Comment Generator',
-			},
-			body: JSON.stringify({
-				model: OPENROUTER_MODEL,
-				messages: [
-					{ role: 'system', content: prompt.system },
-					{ role: 'user', content: prompt.user },
-				],
-				temperature: 0.72,
-				top_p: 0.85,
-				max_completion_tokens: 2_048,
-				response_format: {
-					type: 'json_schema',
-					json_schema: {
-						name: 'comment_variants',
-						strict: true,
-						schema: {
-							type: 'array',
-							minItems: 3,
-							maxItems: 3,
-							items: {
-								type: 'object',
-								additionalProperties: false,
-								required: ['tone', 'text', 'congratulation'],
-								properties: {
-									tone: {
-										type: 'string',
-										enum: ['professional', 'witty', 'supportive'],
+		let response: Response;
+		try {
+			response = await fetch(OPENROUTER_ENDPOINT, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${settings.apiKeys.openrouter}`,
+					'Content-Type': 'application/json',
+					'X-OpenRouter-Title': 'LinkedIn Comment Generator',
+				},
+				body: JSON.stringify({
+					model: OPENROUTER_MODEL,
+					messages: [
+						{ role: 'system', content: prompt.system },
+						{ role: 'user', content: prompt.user },
+					],
+					temperature: attempt === 0 ? 0.72 : 0.82,
+					top_p: 0.85,
+					max_completion_tokens: 2_048,
+					response_format: {
+						type: 'json_schema',
+						json_schema: {
+							name: 'comment_variants',
+							strict: true,
+							schema: {
+								type: 'array',
+								minItems: 3,
+								maxItems: 3,
+								items: {
+									type: 'object',
+									additionalProperties: false,
+									required: ['tone', 'text', 'congratulation'],
+									properties: {
+										tone: {
+											type: 'string',
+											enum: ['professional', 'witty', 'supportive'],
+										},
+										text: { type: 'string' },
+										congratulation: { type: 'boolean' },
 									},
-									text: { type: 'string' },
-									congratulation: { type: 'boolean' },
 								},
 							},
 						},
 					},
-				},
-			}),
-		});
-	} catch {
-		throw new LlmProviderError(
-			'NETWORK_ERROR',
-			'Could not reach OpenRouter. Check your connection and try again.',
-		);
-	}
-
-	let payload: OpenRouterResponse;
-	try {
-		payload = (await response.json()) as OpenRouterResponse;
-	} catch {
-		throw new LlmProviderError(
-			'INVALID_RESPONSE',
-			'OpenRouter returned a response that could not be read.',
-		);
-	}
-
-	if (!response.ok) {
-		const message =
-			payload.error?.message ?? 'OpenRouter rejected the request.';
-		if (response.status === 401 || response.status === 403) {
-			throw new LlmProviderError('INVALID_API_KEY', message);
-		}
-		if (response.status === 429) {
+				}),
+			});
+		} catch {
 			throw new LlmProviderError(
-				'RATE_LIMITED',
-				message,
-				parseRetryAfter(response),
+				'NETWORK_ERROR',
+				'Could not reach OpenRouter. Check your connection and try again.',
 			);
 		}
-		throw new LlmProviderError('PROVIDER_ERROR', message);
+
+		let payload: OpenRouterResponse;
+		try {
+			payload = (await response.json()) as OpenRouterResponse;
+		} catch {
+			throw new LlmProviderError(
+				'INVALID_RESPONSE',
+				'OpenRouter returned a response that could not be read.',
+			);
+		}
+
+		if (!response.ok) {
+			const message =
+				payload.error?.message ?? 'OpenRouter rejected the request.';
+			if (response.status === 401 || response.status === 403) {
+				throw new LlmProviderError('INVALID_API_KEY', message);
+			}
+			if (response.status === 429) {
+				throw new LlmProviderError(
+					'RATE_LIMITED',
+					message,
+					parseRetryAfter(response),
+				);
+			}
+			throw new LlmProviderError('PROVIDER_ERROR', message);
+		}
+
+		const choice = payload.choices?.[0];
+		if (choice?.error?.message) {
+			throw new LlmProviderError('PROVIDER_ERROR', choice.error.message);
+		}
+
+		const content = getMessageContent(choice?.message?.content);
+		if (!content) {
+			throw new LlmProviderError(
+				'INVALID_RESPONSE',
+				'OpenRouter returned no comment variants.',
+			);
+		}
+
+		const variants = parseContent(content);
+		if (attempt === 0 && needsFreshnessRetry(request, variants, history)) {
+			continue;
+		}
+
+		return variants;
 	}
 
-	const choice = payload.choices?.[0];
-	if (choice?.error?.message) {
-		throw new LlmProviderError('PROVIDER_ERROR', choice.error.message);
-	}
-
-	const content = getMessageContent(choice?.message?.content);
-	if (!content) {
-		throw new LlmProviderError(
-			'INVALID_RESPONSE',
-			'OpenRouter returned no comment variants.',
-		);
-	}
-
-	return parseContent(content);
+	throw new LlmProviderError(
+		'INVALID_RESPONSE',
+		'OpenRouter returned repetitive comment variants.',
+	);
 }

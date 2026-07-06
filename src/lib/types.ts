@@ -4,11 +4,22 @@ export type CommentLength = 'short' | 'medium' | 'long';
 
 export type LlmProvider = 'gemini' | 'openrouter';
 
+export type ProviderApiKeys = Record<LlmProvider, string>;
+
+export interface PromptPreferences {
+	avoidBuzzwords: boolean;
+	avoidCliches: boolean;
+	avoidAIGenerated: boolean;
+	preferFreshAngles: boolean;
+}
+
 export interface UserSettings {
-	apiKey: string;
+	apiKeys: ProviderApiKeys;
 	provider: LlmProvider;
 	defaultTone: Tone;
 	commentLength: CommentLength;
+	profileSummary: string;
+	promptPreferences: PromptPreferences;
 }
 
 export interface CommentRequest {
@@ -34,6 +45,14 @@ export interface HistoryEntry {
 export interface GenerateCommentsMessage {
 	action: 'GENERATE_COMMENTS';
 	payload: CommentRequest;
+}
+
+export interface GetSettingsMessage {
+	action: 'GET_SETTINGS';
+}
+
+export interface GetSettingsResponse {
+	settings: UserSettings;
 }
 
 export interface GenerateCommentsSuccess {
