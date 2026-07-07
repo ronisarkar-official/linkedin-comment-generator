@@ -16,7 +16,10 @@
     "noUncheckedSideEffectImports": false,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["chrome"]
+    "types": ["chrome"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }

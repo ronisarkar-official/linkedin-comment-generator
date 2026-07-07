@@ -1,4 +1,4 @@
-import type { CommentRequest, HistoryEntry, UserSettings } from './types';
+import type { CommentRequest, CustomTone, HistoryEntry, UserSettings } from './types';
 
 const lengthGuidance: Record<string, string> = {
 	short: 'one concise sentence, no more than 20 words',
@@ -94,13 +94,59 @@ function formatHistoryExamples(
 		.join('\n');
 }
 
-function getPreferenceInstructions(settings: UserSettings): string[] {
+function getTargetTones(
+	requestTone: string,
+	customTones: CustomTone[] = [],
+): { names: string[]; instruction: string } {
+	const custom = customTones.find(
+		(ct) =>
+			ct.id === requestTone ||
+			ct.label.toLowerCase() === requestTone.toLowerCase(),
+	);
+	if (custom) {
+		const otherTones = ['professional', 'witty', 'supportive']
+			.filter((t) => t.toLowerCase() !== custom.label.toLowerCase())
+			.slice(0, 2);
+		const names = [custom.label, ...otherTones];
+		return {
+			names,
+			instruction: `Use each of these tones exactly once for the three variants: "${custom.label}" (guidance: ${custom.prompt}), "${otherTones[0]}", and "${otherTones[1]}".`,
+		};
+	}
+	return {
+		names: ['professional', 'witty', 'supportive'],
+		instruction:
+			'Use each tone exactly once, spelled exactly as: "professional", "witty", "supportive".',
+	};
+}
+
+function getPreferenceInstructions(
+	settings: UserSettings,
+	customDirective?: string,
+): string[] {
 	const instructions: string[] = [];
 	const profileSummary = sanitizeField(settings.profileSummary, MAX_PROFILE_CHARS);
 
 	if (profileSummary) {
 		instructions.push(
 			`Use this user profile as a voice hint when it helps, but never invent personal facts: ${profileSummary}`,
+		);
+	}
+
+	if (settings.styleExamples && settings.styleExamples.length > 0) {
+		const validExamples = settings.styleExamples
+			.map((ex) => sanitizeField(ex, 300))
+			.filter((ex) => ex.length > 0);
+		if (validExamples.length > 0) {
+			instructions.push(
+				`Here are examples of real comments the user has written in the past. Match their vocabulary, sentence structure, and conversational rhythm:\n${validExamples.map((ex, i) => `${i + 1}. "${ex}"`).join('\n')}`,
+			);
+		}
+	}
+
+	if (customDirective && customDirective.trim().length > 0) {
+		instructions.push(
+			`The user provided this custom directive for reacting to this post: "${sanitizeField(customDirective, 500)}". Ensure at least two of the variants incorporate this instruction directly into their response angle.`,
 		);
 	}
 
@@ -153,7 +199,8 @@ export function buildCommentPrompt(
 		:	'';
 	const relevantHistory = getRelevantHistoryEntries(request, history);
 	const historyExamples = formatHistoryExamples(relevantHistory, MAX_HISTORY_SNIPPET_CHARS);
-	const preferenceInstructions = getPreferenceInstructions(settings);
+	const preferenceInstructions = getPreferenceInstructions(settings, request.customDirective);
+	const targetTones = getTargetTones(request.tone, settings.customTones);
 
 	const authorContext =
 		safeAuthorName ?
@@ -164,6 +211,7 @@ export function buildCommentPrompt(
 	return {
 		system: [
 			'Write like a real person leaving a quick, thoughtful LinkedIn comment after reading the post once.',
+			'Detect the primary language of the post text in <linkedin_post>. You MUST generate all three comment variants in that exact same language (e.g., if the post is in Spanish, write all comments in Spanish; if German, in German; if Japanese, in Japanese).',
 			'The writing should feel conversational and slightly imperfect, not polished like marketing copy, an essay, or an AI response.',
 			"First identify the post's main subject and the single most important concrete detail, then keep every variant anchored to that same topic.",
 			'Never drift into unrelated industries, generic praise, or advice that could fit any LinkedIn post.',
@@ -193,7 +241,7 @@ export function buildCommentPrompt(
 			'The response must be a JSON array of exactly three objects and nothing else.',
 			'Each object must contain exactly three fields: "tone", "text", and "congratulation".',
 			'The congratulation field must be a boolean.',
-			'Use each tone exactly once, spelled exactly as: "professional", "witty", "supportive".',
+			targetTones.instruction,
 			'Write directly as the commenter, never describe the post from outside with phrases like "this post highlights" or "the author explains".',
 		].join(' '),
 		user: [

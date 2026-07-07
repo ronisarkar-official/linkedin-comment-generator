@@ -1,4 +1,4 @@
-import { showContentError, showVariantPicker } from "./comment-box"
+import { showContentError, showVariantPicker, insertCommentIntoVisiblePost } from "./comment-box"
 import { findVisiblePost, observeLinkedInFeed } from "./dom-selectors"
 import { injectGenerateButton } from "./inject-button"
 
@@ -44,6 +44,18 @@ style.textContent = `
   .lcg-tone-professional { background: #dbeafe; color: #1e40af; }
   .lcg-tone-witty { background: #fef3c7; color: #92400e; }
   .lcg-tone-supportive { background: #dcfce7; color: #166534; }
+  .lcg-tone-custom { background: #f3e8ff; color: #6b21a8; }
+  .lcg-refine-bar { border-bottom: 1px solid #e0dfdc; margin-bottom: 10px; padding-bottom: 10px; }
+  .lcg-refine-input-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .lcg-refine-input { border: 1px solid #d6d6d6; border-radius: 6px; font-size: 13px; outline: none; padding: 6px 10px; width: 100%; }
+  .lcg-refine-input:focus { border-color: #0a66c2; box-shadow: 0 0 0 1px #0a66c2; }
+  .lcg-refine-btn { background: #0a66c2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; white-space: nowrap; }
+  .lcg-refine-btn:hover { background: #004182; }
+  .lcg-refine-btn:disabled { opacity: 0.6; cursor: wait; }
+  .lcg-pills-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .lcg-pill { background: #f3f2ef; border: 1px solid #e0dfdc; border-radius: 999px; color: #5f5f5f; cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 8px; transition: all 0.15s; }
+  .lcg-pill:hover { background: #e0dfdc; color: #191919; }
+  .lcg-pill:disabled { opacity: 0.5; cursor: wait; }
   .lcg-variant-text { display: block; }
   .lcg-panel-status { align-items: center; color: #5f5f5f; display: flex; font-size: 12px; min-height: 17px; padding-top: 8px; }
   .lcg-panel-status-error { color: #b42318; }
@@ -111,3 +123,31 @@ if (window.location.pathname.startsWith("/feed")) {
     }
   }, 3_000)
 }
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || typeof message !== 'object') return false
+  const candidate = message as Record<string, unknown>
+
+  if (candidate.action !== 'INSERT_HISTORY_COMMENT') return false
+
+  const payload = candidate.payload as Record<string, unknown> | undefined
+  const text = typeof payload?.text === 'string' ? payload.text.trim() : ''
+  if (!text) {
+    sendResponse({ ok: false, message: 'No comment text was provided.' })
+    return false
+  }
+
+  void insertCommentIntoVisiblePost(text)
+    .then((inserted) => {
+      sendResponse(
+        inserted
+          ? { ok: true }
+          : { ok: false, message: 'Could not find a visible LinkedIn comment box.' },
+      )
+    })
+    .catch(() => {
+      sendResponse({ ok: false, message: 'Could not insert the comment.' })
+    })
+
+  return true
+})

@@ -1,7 +1,12 @@
-import type { CommentVariant, Tone } from '../lib/types';
-import { findCommentInput, findCommentTrigger } from './dom-selectors';
+import type { CommentVariant } from '../lib/types';
+import {
+	findCommentInput,
+	findCommentTrigger,
+	findVisiblePost,
+} from './dom-selectors';
+import type { RefineCallback } from './inject-button';
 
-const toneLabels: Record<Tone, string> = {
+const toneLabels: Record<string, string> = {
 	professional: 'Professional',
 	witty: 'Witty',
 	supportive: 'Supportive',
@@ -145,6 +150,16 @@ async function insertCommentText(
 	return normalizeText(readInputText(input)).includes(normalizeText(text));
 }
 
+export async function insertCommentIntoVisiblePost(text: string): Promise<boolean> {
+	const post = findVisiblePost();
+	if (!post) return false;
+
+	const input = await waitForCommentInput(post);
+	if (!input) return false;
+
+	return insertCommentText(input, text);
+}
+
 function positionPanel(panel: HTMLElement, anchor: HTMLElement): void {
 	const rect = anchor.getBoundingClientRect();
 	const width = Math.min(380, window.innerWidth - 24);
@@ -173,6 +188,7 @@ export function showVariantPicker(
 	post: HTMLElement,
 	variants: CommentVariant[],
 	anchor: HTMLElement,
+	onRefine?: RefineCallback,
 ): void {
 	closeActivePanel();
 
@@ -201,72 +217,159 @@ export function showVariantPicker(
 	status.className = 'lcg-panel-status';
 	status.setAttribute('aria-live', 'polite');
 
-	variants.forEach((variant) => {
-		const card = document.createElement('button');
-		card.type = 'button';
-		card.className = 'lcg-variant-card';
+	const cardsContainer = document.createElement('div');
+	cardsContainer.className = 'lcg-cards-container';
 
-		const label = document.createElement('span');
-		label.className = `lcg-tone-label lcg-tone-${variant.tone}`;
-		label.textContent = toneLabels[variant.tone];
+	const renderCards = (currentVariants: CommentVariant[]) => {
+		cardsContainer.replaceChildren();
+		currentVariants.forEach((variant) => {
+			const card = document.createElement('button');
+			card.type = 'button';
+			card.className = 'lcg-variant-card';
 
-		const congratulation = document.createElement('span');
-		congratulation.className = 'lcg-congratulation-label';
-		congratulation.textContent =
-			variant.congratulation ?
-				congratulationLabels.true
-			:	congratulationLabels.false;
+			const label = document.createElement('span');
+			const toneKey = variant.tone.toLowerCase();
+			const isBuiltin = ['professional', 'witty', 'supportive'].includes(toneKey);
+			label.className = `lcg-tone-label ${isBuiltin ? `lcg-tone-${toneKey}` : 'lcg-tone-custom'}`;
+			label.textContent = toneLabels[toneKey] || (variant.tone.charAt(0).toUpperCase() + variant.tone.slice(1));
 
-		const text = document.createElement('span');
-		text.className = 'lcg-variant-text';
-		text.textContent = variant.text;
+			const congratulation = document.createElement('span');
+			congratulation.className = 'lcg-congratulation-label';
+			congratulation.textContent =
+				variant.congratulation ?
+					congratulationLabels.true
+				:	congratulationLabels.false;
 
-		card.append(label, congratulation, text);
-		card.addEventListener('click', async () => {
-			panel.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
-				button.disabled = true;
+			const text = document.createElement('span');
+			text.className = 'lcg-variant-text';
+			text.textContent = variant.text;
+
+			card.append(label, congratulation, text);
+			card.addEventListener('click', async () => {
+				panel.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+					button.disabled = true;
+				});
+				status.replaceChildren();
+				const spinner = document.createElement('span');
+				spinner.className = 'lcg-spinner lcg-spinner-dark';
+				spinner.setAttribute('aria-hidden', 'true');
+				const statusText = document.createElement('span');
+				statusText.textContent = 'Opening the LinkedIn comment box…';
+				status.append(spinner, statusText);
+
+				const input = await waitForCommentInput(post);
+				if (!input) {
+					panel
+						.querySelectorAll<HTMLButtonElement>('button')
+						.forEach((button) => {
+							button.disabled = false;
+						});
+					status.textContent =
+						"Could not find LinkedIn's comment box. Open it manually and try again.";
+					status.classList.add('lcg-panel-status-error');
+					return;
+				}
+
+				const inserted = await insertCommentText(input, variant.text);
+				if (!inserted) {
+					panel
+						.querySelectorAll<HTMLButtonElement>('button')
+						.forEach((button) => {
+							button.disabled = false;
+						});
+					status.textContent =
+						'LinkedIn rejected the inserted text. Click inside the comment box and try again.';
+					status.classList.add('lcg-panel-status-error');
+					return;
+				}
+
+				closeActivePanel();
 			});
+
+			cardsContainer.append(card);
+		});
+	};
+
+	if (onRefine) {
+		const refineBar = document.createElement('div');
+		refineBar.className = 'lcg-refine-bar';
+
+		const inputRow = document.createElement('div');
+		inputRow.className = 'lcg-refine-input-row';
+
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.className = 'lcg-refine-input';
+		input.placeholder = 'Guide AI (e.g. "Mention Kubernetes")...';
+
+		const refineBtn = document.createElement('button');
+		refineBtn.type = 'button';
+		refineBtn.className = 'lcg-refine-btn';
+		refineBtn.textContent = 'Refine';
+
+		const pillsRow = document.createElement('div');
+		pillsRow.className = 'lcg-pills-row';
+
+		const pills = [
+			{ label: '✨ Shorter', directive: 'Make all comments much shorter and more concise.' },
+			{ label: '❓ Ask a Question', directive: 'End at least one comment with an insightful question.' },
+			{ label: '👔 More Casual', directive: 'Make the tone more conversational and casual.' },
+			{ label: '🔄 Fresh Angle', directive: 'Take a completely different, fresh perspective on this post.' },
+		];
+
+		const triggerRefine = async (directiveText: string) => {
+			if (!directiveText.trim()) return;
+			input.disabled = true;
+			refineBtn.disabled = true;
+			pillsRow.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.disabled = true));
+
 			status.replaceChildren();
 			const spinner = document.createElement('span');
 			spinner.className = 'lcg-spinner lcg-spinner-dark';
 			spinner.setAttribute('aria-hidden', 'true');
 			const statusText = document.createElement('span');
-			statusText.textContent = 'Opening the LinkedIn comment box…';
+			statusText.textContent = 'Refining comments...';
 			status.append(spinner, statusText);
 
-			const input = await waitForCommentInput(post);
-			if (!input) {
-				panel
-					.querySelectorAll<HTMLButtonElement>('button')
-					.forEach((button) => {
-						button.disabled = false;
-					});
-				status.textContent =
-					"Could not find LinkedIn's comment box. Open it manually and try again.";
-				status.classList.add('lcg-panel-status-error');
-				return;
-			}
+			const result = await onRefine(directiveText);
 
-			const inserted = await insertCommentText(input, variant.text);
-			if (!inserted) {
-				panel
-					.querySelectorAll<HTMLButtonElement>('button')
-					.forEach((button) => {
-						button.disabled = false;
-					});
-				status.textContent =
-					'LinkedIn rejected the inserted text. Click inside the comment box and try again.';
-				status.classList.add('lcg-panel-status-error');
-				return;
-			}
+			input.disabled = false;
+			refineBtn.disabled = false;
+			pillsRow.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.disabled = false));
+			input.value = '';
 
-			closeActivePanel();
+			if (typeof result === 'string') {
+				status.replaceChildren();
+				status.textContent = result;
+				status.classList.add('lcg-panel-status-error');
+			} else {
+				status.replaceChildren();
+				status.classList.remove('lcg-panel-status-error');
+				renderCards(result);
+			}
+		};
+
+		refineBtn.addEventListener('click', () => triggerRefine(input.value));
+		input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') triggerRefine(input.value);
 		});
 
-		panel.append(card);
-	});
+		pills.forEach((p) => {
+			const pillBtn = document.createElement('button');
+			pillBtn.type = 'button';
+			pillBtn.className = 'lcg-pill';
+			pillBtn.textContent = p.label;
+			pillBtn.addEventListener('click', () => triggerRefine(p.directive));
+			pillsRow.append(pillBtn);
+		});
 
-	panel.append(status);
+		inputRow.append(input, refineBtn);
+		refineBar.append(inputRow, pillsRow);
+		panel.append(refineBar);
+	}
+
+	renderCards(variants);
+	panel.append(cardsContainer, status);
 	document.body.append(panel);
 	positionPanel(panel, anchor);
 	activePanel = panel;

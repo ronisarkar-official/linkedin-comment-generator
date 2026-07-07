@@ -5,15 +5,16 @@ import type {
 	UserSettings,
 } from '../types';
 import { LlmProviderError } from '../types';
+import { generateWithAnthropic } from './anthropic';
 import { generateWithGemini } from './gemini';
-import { generateWithOpenRouter } from './openrouter';
+import { generateWithOpenAICompat } from './openai-compat';
 
 export async function generateComments(
 	request: CommentRequest,
 	settings: UserSettings,
 	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
-	const apiKey = settings.apiKeys[settings.provider];
+	const apiKey = settings.apiKeys[settings.provider] ?? '';
 
 	if (!apiKey.trim()) {
 		throw new LlmProviderError(
@@ -26,8 +27,18 @@ export async function generateComments(
 		return generateWithGemini(request, settings, history);
 	}
 
-	if (settings.provider === 'openrouter') {
-		return generateWithOpenRouter(request, settings, history);
+	if (settings.provider === 'anthropic') {
+		return generateWithAnthropic(request, settings, history);
+	}
+
+	// All other providers use the OpenAI-compatible chat completions API
+	const openaiCompatProviders = new Set([
+		'openai', 'openrouter', 'groq', 'together',
+		'mistral', 'deepseek', 'cohere', 'perplexity', 'xai',
+	]);
+
+	if (openaiCompatProviders.has(settings.provider)) {
+		return generateWithOpenAICompat(request, settings, history);
 	}
 
 	throw new LlmProviderError(

@@ -18,11 +18,14 @@ const recentRequests: number[] = [];
 const lastRequestByPost = new WeakMap<HTMLElement, number>();
 const postContainerSelector = POST_CONTAINER_SELECTORS.join(',');
 
+export type RefineCallback = (directive: string) => Promise<CommentVariant[] | string>;
+
 export interface InjectionCallbacks {
 	onVariants: (
 		post: HTMLElement,
 		variants: CommentVariant[],
 		anchor: HTMLElement,
+		onRefine?: RefineCallback,
 	) => void;
 	onError: (post: HTMLElement, message: string, anchor: HTMLElement) => void;
 }
@@ -109,14 +112,15 @@ function findCanonicalPost(post: HTMLElement): HTMLElement {
 function sendGenerateRequest(
 	postText: string,
 	authorName: string | undefined,
-	tone: 'professional' | 'witty' | 'supportive',
+	tone: string,
 	length: string,
+	customDirective?: string,
 ): Promise<GenerateCommentsResponse> {
 	return new Promise((resolve, reject) => {
 		chrome.runtime.sendMessage(
 			{
 				action: 'GENERATE_COMMENTS',
-				payload: { postText, authorName, tone, length },
+				payload: { postText, authorName, tone, length, customDirective },
 			},
 			(response: GenerateCommentsResponse | undefined) => {
 				const runtimeError = chrome.runtime.lastError;
@@ -137,7 +141,7 @@ function sendGenerateRequest(
 }
 
 function requestSettings(): Promise<{
-	defaultTone: 'professional' | 'witty' | 'supportive';
+	defaultTone: string;
 	commentLength: string;
 }> {
 	return new Promise((resolve, reject) => {
@@ -229,7 +233,26 @@ export function injectGenerateButton(
 				return;
 			}
 
-			callbacks.onVariants(post, response.variants, button);
+			const onRefine: RefineCallback = async (directive: string) => {
+				const rateLimitErr = checkClientRateLimit(post);
+				if (rateLimitErr) return rateLimitErr;
+				try {
+					const latestSettings = await requestSettings();
+					const res = await sendGenerateRequest(
+						postText,
+						findAuthorName(post),
+						latestSettings.defaultTone,
+						latestSettings.commentLength,
+						directive,
+					);
+					if (!res.ok) return getFailureMessage(res);
+					return res.variants;
+				} catch (err) {
+					return err instanceof Error ? err.message : 'Could not refine comments.';
+				}
+			};
+
+			callbacks.onVariants(post, response.variants, button, onRefine);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Could not generate comments.';

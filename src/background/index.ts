@@ -1,17 +1,17 @@
 import { generateComments } from '../lib/llm/provider';
-import { addHistoryEntry, getHistory, getSettings } from '../lib/storage';
+import { addHistoryEntry, clearHistory, deleteHistoryEntry, getHistory, getSettings } from '../lib/storage';
 import type {
+	ClearHistoryResponse,
 	CommentRequest,
+	DeleteHistoryEntryResponse,
 	GenerateCommentsFailure,
 	GenerateCommentsMessage,
 	GenerateCommentsResponse,
 	GetSettingsMessage,
 	GetSettingsResponse,
-	Tone,
 } from '../lib/types';
 import { LlmProviderError } from '../lib/types';
 
-const validTones = new Set<Tone>(['professional', 'witty', 'supportive']);
 const validLengths = new Set(['short', 'medium', 'long']);
 
 function isCommentRequest(value: unknown): value is CommentRequest {
@@ -22,10 +22,11 @@ function isCommentRequest(value: unknown): value is CommentRequest {
 		request.postText.trim().length > 0 &&
 		request.postText.length <= 12_000 &&
 		typeof request.tone === 'string' &&
-		validTones.has(request.tone as Tone) &&
+		request.tone.trim().length > 0 &&
 		typeof request.length === 'string' &&
 		validLengths.has(request.length) &&
-		(request.authorName === undefined || typeof request.authorName === 'string')
+		(request.authorName === undefined || typeof request.authorName === 'string') &&
+		(request.customDirective === undefined || typeof request.customDirective === 'string')
 	);
 }
 
@@ -76,6 +77,9 @@ async function handleGenerate(
 			await addHistoryEntry({
 				id: crypto.randomUUID(),
 				postText: request.postText,
+				authorName: request.authorName,
+				tone: request.tone,
+				length: request.length,
 				variants,
 				timestamp: Date.now(),
 			});
@@ -106,6 +110,24 @@ chrome.runtime.onMessage.addListener(
 				.catch((error: unknown) => {
 					sendResponse(toFailure(error));
 				});
+			return true;
+		}
+
+		if (candidate.action === 'DELETE_HISTORY_ENTRY') {
+			if (typeof candidate.payload !== 'object' || !candidate.payload || typeof (candidate.payload as Record<string, unknown>).id !== 'string') {
+				return false;
+			}
+			const id = (candidate.payload as Record<string, unknown>).id as string;
+			void deleteHistoryEntry(id)
+				.then(() => sendResponse({ ok: true } satisfies DeleteHistoryEntryResponse))
+				.catch((error: unknown) => sendResponse(toFailure(error)));
+			return true;
+		}
+
+		if (candidate.action === 'CLEAR_HISTORY') {
+			void clearHistory()
+				.then(() => sendResponse({ ok: true } satisfies ClearHistoryResponse))
+				.catch((error: unknown) => sendResponse(toFailure(error)));
 			return true;
 		}
 

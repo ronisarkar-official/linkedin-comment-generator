@@ -9,10 +9,6 @@ import type {
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const validTones = new Set<Tone>(['professional', 'witty', 'supportive']);
-
 interface GeminiResponse {
 	candidates?: Array<{
 		content?: {
@@ -52,7 +48,7 @@ function validateVariants(value: unknown): CommentVariant[] {
 		const candidate = item as Record<string, unknown>;
 		if (
 			typeof candidate.tone !== 'string' ||
-			!validTones.has(candidate.tone as Tone) ||
+			!candidate.tone.trim() ||
 			typeof candidate.text !== 'string' ||
 			!candidate.text.trim() ||
 			typeof candidate.congratulation !== 'boolean'
@@ -85,16 +81,19 @@ export async function generateWithGemini(
 	settings: UserSettings,
 	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
+	const model = settings.model || 'gemini-2.5-flash';
+	const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		const prompt = buildCommentPrompt(request, settings, history, attempt);
 
 		let response: Response;
 		try {
-			response = await fetch(GEMINI_ENDPOINT, {
+			response = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'x-goog-api-key': settings.apiKeys.gemini,
+					'x-goog-api-key': settings.apiKeys.gemini ?? '',
 				},
 				body: JSON.stringify({
 					systemInstruction: {
@@ -124,7 +123,6 @@ export async function generateWithGemini(
 								properties: {
 									tone: {
 										type: 'STRING',
-										enum: ['professional', 'witty', 'supportive'],
 									},
 									text: { type: 'STRING' },
 									congratulation: { type: 'BOOLEAN' },

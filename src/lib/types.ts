@@ -1,10 +1,25 @@
-export type Tone = 'professional' | 'witty' | 'supportive';
+export type Tone = 'professional' | 'witty' | 'supportive' | string;
+
+export interface CustomTone {
+	id: string;
+	label: string;
+	prompt: string;
+}
 
 export type CommentLength = 'short' | 'medium' | 'long';
 
-export type LlmProvider = 'gemini' | 'openrouter';
-
-export type ProviderApiKeys = Record<LlmProvider, string>;
+export type LlmProvider =
+	| 'gemini'
+	| 'openai'
+	| 'anthropic'
+	| 'openrouter'
+	| 'groq'
+	| 'together'
+	| 'mistral'
+	| 'deepseek'
+	| 'cohere'
+	| 'perplexity'
+	| 'xai';
 
 export interface PromptPreferences {
 	avoidBuzzwords: boolean;
@@ -13,13 +28,18 @@ export interface PromptPreferences {
 	preferFreshAngles: boolean;
 }
 
+export type ProviderApiKeys = Partial<Record<LlmProvider, string>>;
+
 export interface UserSettings {
 	apiKeys: ProviderApiKeys;
 	provider: LlmProvider;
+	model: string;
 	defaultTone: Tone;
 	commentLength: CommentLength;
 	profileSummary: string;
 	promptPreferences: PromptPreferences;
+	customTones: CustomTone[];
+	styleExamples: string[];
 }
 
 export interface CommentRequest {
@@ -27,6 +47,7 @@ export interface CommentRequest {
 	authorName?: string;
 	tone: Tone;
 	length: string;
+	customDirective?: string;
 }
 
 export interface CommentVariant {
@@ -38,6 +59,9 @@ export interface CommentVariant {
 export interface HistoryEntry {
 	id: string;
 	postText: string;
+	authorName?: string;
+	tone?: string;
+	length?: string;
 	variants: CommentVariant[];
 	timestamp: number;
 }
@@ -53,6 +77,23 @@ export interface GetSettingsMessage {
 
 export interface GetSettingsResponse {
 	settings: UserSettings;
+}
+
+export interface DeleteHistoryEntryMessage {
+	action: 'DELETE_HISTORY_ENTRY';
+	payload: { id: string };
+}
+
+export interface ClearHistoryMessage {
+	action: 'CLEAR_HISTORY';
+}
+
+export interface DeleteHistoryEntryResponse {
+	ok: true;
+}
+
+export interface ClearHistoryResponse {
+	ok: true;
 }
 
 export interface GenerateCommentsSuccess {

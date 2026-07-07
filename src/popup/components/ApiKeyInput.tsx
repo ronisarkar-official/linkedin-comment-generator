@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import type { LlmProvider } from '../../lib/types';
 
 interface ApiKeyInputProps {
 	value: string;
-	provider: LlmProvider;
+	providerLabel: string;
+	placeholder: string;
 	onSave: (apiKey: string) => Promise<void>;
 }
 
 export default function ApiKeyInput({
 	value,
-	provider,
+	providerLabel,
+	placeholder,
 	onSave,
 }: ApiKeyInputProps) {
 	const [apiKey, setApiKey] = useState(value);
@@ -22,20 +23,14 @@ export default function ApiKeyInput({
 		setApiKey(value);
 		setFeedback('');
 		setIsError(false);
-	}, [value, provider]);
+	}, [value, providerLabel]);
 
 	const handleSave = async () => {
 		const normalized = apiKey.trim();
-		const isValid =
-			provider === 'openrouter' ?
-				normalized.startsWith('sk-or-') && normalized.length >= 20
-			:	normalized.length >= 20;
 
-		if (!isValid) {
+		if (normalized.length < 10) {
 			setIsError(true);
-			setFeedback(
-				`Enter a valid ${provider === 'openrouter' ? 'OpenRouter' : 'Gemini'} API key.`,
-			);
+			setFeedback(`Enter a valid ${providerLabel} API key.`);
 			return;
 		}
 
@@ -59,7 +54,7 @@ export default function ApiKeyInput({
 				<label
 					className="text-sm font-semibold text-slate-800"
 					htmlFor="api-key">
-					{provider === 'openrouter' ? 'OpenRouter' : 'Gemini'} API key
+					{providerLabel} API key
 				</label>
 				<span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
 					Local only
@@ -75,7 +70,7 @@ export default function ApiKeyInput({
 							setApiKey(event.target.value);
 							setFeedback('');
 						}}
-						placeholder={provider === 'openrouter' ? 'sk-or-v1-…' : 'AIza…'}
+						placeholder={placeholder}
 						autoComplete="off"
 						spellCheck={false}
 						className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 pr-14 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"

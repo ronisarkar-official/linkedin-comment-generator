@@ -9,21 +9,13 @@ import type {
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
 
-export const OPENROUTER_MODEL = 'openrouter/free';
-const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const validTones = new Set<Tone>(['professional', 'witty', 'supportive']);
-
-interface OpenRouterResponse {
-	choices?: Array<{
-		message?: {
-			content?: string | Array<{ type?: string; text?: string }>;
-		};
-		error?: {
-			message?: string;
-		};
+interface AnthropicResponse {
+	content?: Array<{
+		type: string;
+		text?: string;
 	}>;
 	error?: {
-		code?: number;
+		type?: string;
 		message?: string;
 	};
 }
@@ -32,7 +24,7 @@ function validateVariants(value: unknown): CommentVariant[] {
 	if (!Array.isArray(value) || value.length !== 3) {
 		throw new LlmProviderError(
 			'INVALID_RESPONSE',
-			'OpenRouter returned an unexpected response shape.',
+			'Anthropic returned an unexpected response shape.',
 		);
 	}
 
@@ -40,21 +32,21 @@ function validateVariants(value: unknown): CommentVariant[] {
 		if (!item || typeof item !== 'object') {
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
-				'OpenRouter returned an invalid comment variant.',
+				'Anthropic returned an invalid comment variant.',
 			);
 		}
 
 		const candidate = item as Record<string, unknown>;
 		if (
 			typeof candidate.tone !== 'string' ||
-			!validTones.has(candidate.tone as Tone) ||
+			!candidate.tone.trim() ||
 			typeof candidate.text !== 'string' ||
 			!candidate.text.trim() ||
 			typeof candidate.congratulation !== 'boolean'
 		) {
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
-				'OpenRouter returned an invalid comment variant.',
+				'Anthropic returned an invalid comment variant.',
 			);
 		}
 
@@ -68,18 +60,11 @@ function validateVariants(value: unknown): CommentVariant[] {
 	if (new Set(variants.map((variant) => variant.tone)).size !== 3) {
 		throw new LlmProviderError(
 			'INVALID_RESPONSE',
-			'OpenRouter did not return all three requested tones.',
+			'Anthropic did not return all three requested tones.',
 		);
 	}
 
 	return variants;
-}
-
-function parseRetryAfter(response: Response): number | undefined {
-	const value = response.headers.get('retry-after');
-	if (!value) return undefined;
-	const seconds = Number(value);
-	return Number.isFinite(seconds) ? seconds : undefined;
 }
 
 function inferCongratulation(text: string): boolean {
@@ -91,7 +76,6 @@ function inferCongratulation(text: string): boolean {
 function parseContent(content: string): CommentVariant[] {
 	const normalized = content
 		.trim()
-		.replace(/<think>[\s\S]*?<\/think>/gi, '')
 		.replace(/^```(?:json)?\s*/i, '')
 		.replace(/\s*```$/, '');
 
@@ -123,18 +107,19 @@ function parseContent(content: string): CommentVariant[] {
 		}
 	}
 
+	// Fallback: labelled text parsing
 	const labelledVariants: CommentVariant[] = [];
 	const labelPattern =
-		/(?:^|\n)\s*(?:\d+[.)]\s*)?(professional|witty|supportive)\s*[:\-]\s*([\s\S]*?)(?=\n\s*(?:\d+[.)]\s*)?(?:professional|witty|supportive)\s*[:\-]|$)/gi;
+		/(?:^|\n)\s*(?:\d+[.)]\s*)?([a-zA-Z0-9\s-_]{3,25})\s*[:\-]\s*([\s\S]*?)(?=\n\s*(?:\d+[.)]\s*)?(?:[a-zA-Z0-9\s-_]{3,25})\s*[:\-]|$)/gi;
 
 	for (const match of normalized.matchAll(labelPattern)) {
 		const text = match[2]
 			.trim()
 			.replace(/^['"]|['"]$/g, '')
 			.replace(/^[-*]\s*/, '');
-		if (text) {
+		if (text && match[1].trim()) {
 			labelledVariants.push({
-				tone: match[1].toLowerCase() as Tone,
+				tone: match[1].trim().toLowerCase() as Tone,
 				text,
 				congratulation: inferCongratulation(text),
 			});
@@ -145,95 +130,69 @@ function parseContent(content: string): CommentVariant[] {
 
 	throw new LlmProviderError(
 		'INVALID_RESPONSE',
-		'OpenRouter returned a response that could not be parsed.',
+		'Anthropic returned a response that could not be parsed.',
 	);
 }
 
-function getMessageContent(
-	content: string | Array<{ type?: string; text?: string }> | undefined,
-): string {
-	if (typeof content === 'string') return content;
-	if (!Array.isArray(content)) return '';
-	return content
-		.filter((part) => part.type === undefined || part.type === 'text')
-		.map((part) => part.text ?? '')
-		.join('\n')
-		.trim();
+function parseRetryAfter(response: Response): number | undefined {
+	const value = response.headers.get('retry-after');
+	if (!value) return undefined;
+	const seconds = Number(value);
+	return Number.isFinite(seconds) ? seconds : undefined;
 }
 
-export async function generateWithOpenRouter(
+export async function generateWithAnthropic(
 	request: CommentRequest,
 	settings: UserSettings,
 	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
+	const model = settings.model || 'claude-sonnet-4-20250514';
+	const endpoint = 'https://api.anthropic.com/v1/messages';
+
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		const prompt = buildCommentPrompt(request, settings, history, attempt);
 
 		let response: Response;
 		try {
-			response = await fetch(OPENROUTER_ENDPOINT, {
+			response = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${settings.apiKeys.openrouter}`,
 					'Content-Type': 'application/json',
-					'X-OpenRouter-Title': 'LinkedIn Comment Generator',
+					'x-api-key': settings.apiKeys.anthropic ?? '',
+					'anthropic-version': '2023-06-01',
+					'anthropic-dangerous-direct-browser-access': 'true',
 				},
 				body: JSON.stringify({
-					model: OPENROUTER_MODEL,
+					model,
+					max_tokens: 2_048,
+					system: prompt.system,
 					messages: [
-						{ role: 'system', content: prompt.system },
 						{ role: 'user', content: prompt.user },
 					],
 					temperature: attempt === 0 ? 0.72 : 0.82,
 					top_p: 0.85,
-					max_completion_tokens: 2_048,
-					response_format: {
-						type: 'json_schema',
-						json_schema: {
-							name: 'comment_variants',
-							strict: true,
-							schema: {
-								type: 'array',
-								minItems: 3,
-								maxItems: 3,
-								items: {
-									type: 'object',
-									additionalProperties: false,
-									required: ['tone', 'text', 'congratulation'],
-									properties: {
-										tone: {
-											type: 'string',
-											enum: ['professional', 'witty', 'supportive'],
-										},
-										text: { type: 'string' },
-										congratulation: { type: 'boolean' },
-									},
-								},
-							},
-						},
-					},
 				}),
 			});
 		} catch {
 			throw new LlmProviderError(
 				'NETWORK_ERROR',
-				'Could not reach OpenRouter. Check your connection and try again.',
+				'Could not reach Anthropic. Check your connection and try again.',
 			);
 		}
 
-		let payload: OpenRouterResponse;
+		let payload: AnthropicResponse;
 		try {
-			payload = (await response.json()) as OpenRouterResponse;
+			payload = (await response.json()) as AnthropicResponse;
 		} catch {
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
-				'OpenRouter returned a response that could not be read.',
+				'Anthropic returned a response that could not be read.',
 			);
 		}
 
 		if (!response.ok) {
 			const message =
-				payload.error?.message ?? 'OpenRouter rejected the request.';
+				payload.error?.message ?? 'Anthropic rejected the request.';
 			if (response.status === 401 || response.status === 403) {
 				throw new LlmProviderError('INVALID_API_KEY', message);
 			}
@@ -247,20 +206,20 @@ export async function generateWithOpenRouter(
 			throw new LlmProviderError('PROVIDER_ERROR', message);
 		}
 
-		const choice = payload.choices?.[0];
-		if (choice?.error?.message) {
-			throw new LlmProviderError('PROVIDER_ERROR', choice.error.message);
-		}
+		const rawText = payload.content
+			?.filter((block) => block.type === 'text')
+			.map((block) => block.text ?? '')
+			.join('')
+			.trim();
 
-		const content = getMessageContent(choice?.message?.content);
-		if (!content) {
+		if (!rawText) {
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
-				'OpenRouter returned no comment variants.',
+				'Anthropic returned no comment variants.',
 			);
 		}
 
-		const variants = parseContent(content);
+		const variants = parseContent(rawText);
 		if (attempt === 0 && needsFreshnessRetry(request, variants, history)) {
 			continue;
 		}
@@ -270,6 +229,6 @@ export async function generateWithOpenRouter(
 
 	throw new LlmProviderError(
 		'INVALID_RESPONSE',
-		'OpenRouter returned repetitive comment variants.',
+		'Anthropic returned repetitive comment variants.',
 	);
 }
