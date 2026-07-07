@@ -1,3 +1,4 @@
+import { logger } from '../logger';
 import { buildCommentPrompt } from '../prompt-templates';
 import type {
 	CommentRequest,
@@ -8,6 +9,9 @@ import type {
 } from '../types';
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
+import { validateModelId } from './registry';
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface GeminiResponse {
 	candidates?: Array<{
@@ -81,11 +85,15 @@ export async function generateWithGemini(
 	settings: UserSettings,
 	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
-	const model = settings.model || 'gemini-2.5-flash';
+	const model = validateModelId(settings.model || 'gemini-2.5-flash');
 	const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		const prompt = buildCommentPrompt(request, settings, history, attempt);
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+		logger.info('Gemini request started.', { model, attempt });
 
 		let response: Response;
 		try {
@@ -131,18 +139,31 @@ export async function generateWithGemini(
 						},
 					},
 				}),
+				signal: controller.signal,
 			});
-		} catch {
+		} catch (error) {
+			clearTimeout(timeout);
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				logger.error('Gemini request timed out.', { model, attempt });
+				throw new LlmProviderError(
+					'NETWORK_ERROR',
+					'Gemini request timed out. Try again.',
+				);
+			}
+			logger.error('Gemini network error.', { model, attempt });
 			throw new LlmProviderError(
 				'NETWORK_ERROR',
 				'Could not reach Gemini. Check your connection and try again.',
 			);
+		} finally {
+			clearTimeout(timeout);
 		}
 
 		let payload: GeminiResponse;
 		try {
 			payload = (await response.json()) as GeminiResponse;
 		} catch {
+			logger.error('Gemini returned unparseable response.', { model, status: response.status });
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
 				'Gemini returned a response that could not be read.',
@@ -151,6 +172,7 @@ export async function generateWithGemini(
 
 		if (!response.ok) {
 			const message = payload.error?.message ?? 'Gemini rejected the request.';
+			logger.warn('Gemini API error.', { model, status: response.status, message });
 			if (response.status === 429) {
 				throw new LlmProviderError(
 					'RATE_LIMITED',
@@ -192,9 +214,11 @@ export async function generateWithGemini(
 		}
 
 		if (attempt === 0 && needsFreshnessRetry(request, variants, history)) {
+			logger.info('Gemini freshness retry triggered.', { model });
 			continue;
 		}
 
+		logger.info('Gemini request succeeded.', { model, attempt });
 		return variants;
 	}
 

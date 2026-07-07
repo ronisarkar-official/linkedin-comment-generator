@@ -1,3 +1,4 @@
+import { logger } from '../logger';
 import { buildCommentPrompt } from '../prompt-templates';
 import type {
 	CommentRequest,
@@ -8,6 +9,8 @@ import type {
 } from '../types';
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface AnthropicResponse {
 	content?: Array<{
@@ -151,6 +154,10 @@ export async function generateWithAnthropic(
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		const prompt = buildCommentPrompt(request, settings, history, attempt);
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+		logger.info('Anthropic request started.', { model, attempt });
 
 		let response: Response;
 		try {
@@ -172,18 +179,31 @@ export async function generateWithAnthropic(
 					temperature: attempt === 0 ? 0.72 : 0.82,
 					top_p: 0.85,
 				}),
+				signal: controller.signal,
 			});
-		} catch {
+		} catch (error) {
+			clearTimeout(timeout);
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				logger.error('Anthropic request timed out.', { model, attempt });
+				throw new LlmProviderError(
+					'NETWORK_ERROR',
+					'Anthropic request timed out. Try again.',
+				);
+			}
+			logger.error('Anthropic network error.', { model, attempt });
 			throw new LlmProviderError(
 				'NETWORK_ERROR',
 				'Could not reach Anthropic. Check your connection and try again.',
 			);
+		} finally {
+			clearTimeout(timeout);
 		}
 
 		let payload: AnthropicResponse;
 		try {
 			payload = (await response.json()) as AnthropicResponse;
 		} catch {
+			logger.error('Anthropic returned unparseable response.', { model, status: response.status });
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
 				'Anthropic returned a response that could not be read.',
@@ -193,6 +213,7 @@ export async function generateWithAnthropic(
 		if (!response.ok) {
 			const message =
 				payload.error?.message ?? 'Anthropic rejected the request.';
+			logger.warn('Anthropic API error.', { model, status: response.status, message });
 			if (response.status === 401 || response.status === 403) {
 				throw new LlmProviderError('INVALID_API_KEY', message);
 			}
@@ -221,9 +242,11 @@ export async function generateWithAnthropic(
 
 		const variants = parseContent(rawText);
 		if (attempt === 0 && needsFreshnessRetry(request, variants, history)) {
+			logger.info('Anthropic freshness retry triggered.', { model });
 			continue;
 		}
 
+		logger.info('Anthropic request succeeded.', { model, attempt });
 		return variants;
 	}
 

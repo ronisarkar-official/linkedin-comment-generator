@@ -18,6 +18,7 @@ const congratulationLabels = {
 } as const;
 
 let activePanel: HTMLElement | null = null;
+let activePanelCleanup: (() => void) | null = null;
 
 function waitForCommentInput(post: HTMLElement): Promise<HTMLElement | null> {
 	const existing = findCommentInput(post);
@@ -180,6 +181,8 @@ function positionPanel(panel: HTMLElement, anchor: HTMLElement): void {
 }
 
 function closeActivePanel(): void {
+	activePanelCleanup?.();
+	activePanelCleanup = null;
 	activePanel?.remove();
 	activePanel = null;
 }
@@ -196,6 +199,7 @@ export function showVariantPicker(
 	panel.className = 'lcg-variant-panel';
 	panel.setAttribute('role', 'dialog');
 	panel.setAttribute('aria-label', 'Generated comment variants');
+	panel.setAttribute('aria-modal', 'true');
 
 	const header = document.createElement('div');
 	header.className = 'lcg-panel-header';
@@ -301,6 +305,7 @@ export function showVariantPicker(
 		input.type = 'text';
 		input.className = 'lcg-refine-input';
 		input.placeholder = 'Guide AI (e.g. "Mention Kubernetes")...';
+		input.maxLength = 500;
 
 		const refineBtn = document.createElement('button');
 		refineBtn.type = 'button';
@@ -374,15 +379,36 @@ export function showVariantPicker(
 	positionPanel(panel, anchor);
 	activePanel = panel;
 
-	window.setTimeout(() => {
-		const closeOnOutsideClick = (event: MouseEvent) => {
-			if (!panel.contains(event.target as Node) && event.target !== anchor) {
-				closeActivePanel();
-				document.removeEventListener('click', closeOnOutsideClick, true);
-			}
-		};
-		document.addEventListener('click', closeOnOutsideClick, true);
+	// Focus the close button on open for accessibility
+	closeButton.focus();
+
+	// Set up event listeners with proper cleanup
+	const handleEscape = (event: KeyboardEvent) => {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			closeActivePanel();
+		}
+	};
+
+	const handleOutsideClick = (event: MouseEvent) => {
+		if (!panel.contains(event.target as Node) && event.target !== anchor) {
+			closeActivePanel();
+		}
+	};
+
+	// Use setTimeout(0) to avoid catching the opening click
+	const outsideClickTimer = window.setTimeout(() => {
+		document.addEventListener('click', handleOutsideClick, true);
 	});
+
+	document.addEventListener('keydown', handleEscape, true);
+
+	// Store cleanup function so closeActivePanel can remove listeners
+	activePanelCleanup = () => {
+		window.clearTimeout(outsideClickTimer);
+		document.removeEventListener('click', handleOutsideClick, true);
+		document.removeEventListener('keydown', handleEscape, true);
+	};
 }
 
 export function showContentError(message: string, anchor: HTMLElement): void {

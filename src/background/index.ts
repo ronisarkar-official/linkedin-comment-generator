@@ -1,3 +1,4 @@
+import { logger } from '../lib/logger';
 import { generateComments } from '../lib/llm/provider';
 import { addHistoryEntry, clearHistory, deleteHistoryEntry, getHistory, getSettings } from '../lib/storage';
 import type {
@@ -65,6 +66,14 @@ function toFailure(error: unknown): GenerateCommentsFailure {
 	};
 }
 
+/**
+ * Validates that a message sender belongs to this extension.
+ * Accepts messages from content scripts, the popup, and the extension itself.
+ */
+function isTrustedSender(sender: chrome.runtime.MessageSender): boolean {
+	return sender.id === chrome.runtime.id;
+}
+
 async function handleGenerate(
 	request: CommentRequest,
 ): Promise<GenerateCommentsResponse> {
@@ -84,7 +93,9 @@ async function handleGenerate(
 				timestamp: Date.now(),
 			});
 		} catch (error) {
-			console.warn('LinkedIn Comment Generator could not save history.', error);
+			logger.warn('Could not save history entry.', {
+				error: error instanceof Error ? error.message : 'Unknown',
+			});
 		}
 
 		return { ok: true, variants };
@@ -94,7 +105,16 @@ async function handleGenerate(
 }
 
 chrome.runtime.onMessage.addListener(
-	(message: unknown, _sender, sendResponse) => {
+	(message: unknown, sender, sendResponse) => {
+		// Security: only accept messages from this extension
+		if (!isTrustedSender(sender)) {
+			logger.warn('Rejected message from untrusted sender.', {
+				senderId: sender.id,
+				senderUrl: sender.url,
+			});
+			return false;
+		}
+
 		if (!message || typeof message !== 'object') return false;
 		const candidate = message as Record<string, unknown>;
 
@@ -103,11 +123,15 @@ chrome.runtime.onMessage.addListener(
 				return false;
 			}
 
+			logger.debug('Handling GET_SETTINGS.');
 			void getSettings()
 				.then((settings) => {
 					sendResponse({ settings } satisfies GetSettingsResponse);
 				})
 				.catch((error: unknown) => {
+					logger.error('GET_SETTINGS failed.', {
+						error: error instanceof Error ? error.message : 'Unknown',
+					});
 					sendResponse(toFailure(error));
 				});
 			return true;
@@ -118,6 +142,7 @@ chrome.runtime.onMessage.addListener(
 				return false;
 			}
 			const id = (candidate.payload as Record<string, unknown>).id as string;
+			logger.debug('Handling DELETE_HISTORY_ENTRY.', { id });
 			void deleteHistoryEntry(id)
 				.then(() => sendResponse({ ok: true } satisfies DeleteHistoryEntryResponse))
 				.catch((error: unknown) => sendResponse(toFailure(error)));
@@ -125,6 +150,7 @@ chrome.runtime.onMessage.addListener(
 		}
 
 		if (candidate.action === 'CLEAR_HISTORY') {
+			logger.debug('Handling CLEAR_HISTORY.');
 			void clearHistory()
 				.then(() => sendResponse({ ok: true } satisfies ClearHistoryResponse))
 				.catch((error: unknown) => sendResponse(toFailure(error)));
@@ -134,6 +160,7 @@ chrome.runtime.onMessage.addListener(
 		if (candidate.action !== 'GENERATE_COMMENTS') return false;
 
 		if (!isGenerateMessage(message)) {
+			logger.warn('Rejected invalid GENERATE_COMMENTS payload.');
 			sendResponse({
 				ok: false,
 				error: {
@@ -141,12 +168,22 @@ chrome.runtime.onMessage.addListener(
 					message: 'The comment request was invalid.',
 				},
 			} satisfies GenerateCommentsFailure);
-			return false;
+			// Return true so Chrome knows we called sendResponse asynchronously
+			return true;
 		}
+
+		logger.info('Handling GENERATE_COMMENTS.', {
+			tone: message.payload.tone,
+			length: message.payload.length,
+			postTextLength: message.payload.postText.length,
+		});
 
 		void handleGenerate(message.payload)
 			.then(sendResponse)
 			.catch((error: unknown) => {
+				logger.error('GENERATE_COMMENTS failed unexpectedly.', {
+					error: error instanceof Error ? error.message : 'Unknown',
+				});
 				sendResponse(toFailure(error));
 			});
 		return true;

@@ -1,8 +1,11 @@
-import type { HistoryEntry, LlmProvider, ProviderApiKeys, UserSettings } from './types';
+import { logger } from './logger';
+import type { CustomTone, HistoryEntry, LlmProvider, ProviderApiKeys, UserSettings } from './types';
 
 const SETTINGS_KEY = 'settings';
 const HISTORY_KEY = 'history';
 const MAX_HISTORY_ENTRIES = 50;
+const MAX_CUSTOM_TONES = 10;
+const MAX_STYLE_EXAMPLES = 5;
 
 const VALID_PROVIDERS = new Set<string>([
 	'gemini', 'openai', 'anthropic', 'openrouter', 'groq',
@@ -49,7 +52,7 @@ function normalizeApiKeys(
 		const keys = stored.apiKeys as Record<string, string>;
 		const result: ProviderApiKeys = {};
 		for (const [key, value] of Object.entries(keys)) {
-			if (typeof value === 'string' && value.trim()) {
+			if (typeof value === 'string' && value.trim() && VALID_PROVIDERS.has(key)) {
 				result[key as LlmProvider] = value;
 			}
 		}
@@ -71,6 +74,39 @@ function normalizeProvider(value: unknown): LlmProvider {
 	return DEFAULT_SETTINGS.provider;
 }
 
+function isValidCustomTone(value: unknown): value is CustomTone {
+	if (!value || typeof value !== 'object') return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.id === 'string' && candidate.id.trim().length > 0 &&
+		typeof candidate.label === 'string' && candidate.label.trim().length > 0 &&
+		typeof candidate.prompt === 'string' && candidate.prompt.trim().length > 0
+	);
+}
+
+function normalizeCustomTones(value: unknown): CustomTone[] {
+	if (!Array.isArray(value)) return DEFAULT_SETTINGS.customTones;
+	return value.filter(isValidCustomTone).slice(0, MAX_CUSTOM_TONES);
+}
+
+function normalizeStyleExamples(value: unknown): string[] {
+	if (!Array.isArray(value)) return DEFAULT_SETTINGS.styleExamples;
+	return value
+		.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+		.slice(0, MAX_STYLE_EXAMPLES);
+}
+
+function isValidHistoryEntry(value: unknown): value is HistoryEntry {
+	if (!value || typeof value !== 'object') return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.id === 'string' && candidate.id.length > 0 &&
+		typeof candidate.postText === 'string' &&
+		typeof candidate.timestamp === 'number' &&
+		Array.isArray(candidate.variants)
+	);
+}
+
 export async function getSettings(): Promise<UserSettings> {
 	const localStored = await chrome.storage.local.get(SETTINGS_KEY);
 	let syncStored: Record<string, unknown> = {};
@@ -82,49 +118,77 @@ export async function getSettings(): Promise<UserSettings> {
 
 	const localSettings = localStored[SETTINGS_KEY] as Record<string, unknown> | undefined;
 	const syncSettings = syncStored[SETTINGS_KEY] as Record<string, unknown> | undefined;
-	const settings = { ...localSettings, ...syncSettings } as Record<string, unknown>;
 
-	const provider = normalizeProvider(settings.provider);
+	// Security: provider and apiKeys must come from local storage only.
+	// Sync storage may only provide non-sensitive display preferences.
+	const provider = normalizeProvider(localSettings?.provider ?? syncSettings?.provider);
 	const apiKeys = normalizeApiKeys(localSettings ?? {}, provider);
 
-	// Strip legacy top-level apiKey property if present
-	delete settings.apiKey;
+	// Merge non-sensitive settings from sync as baseline, then local overrides.
+	const mergedPrefs: Record<string, unknown> = {};
+	if (syncSettings) {
+		for (const [key, val] of Object.entries(syncSettings)) {
+			// Never trust sync for security-sensitive fields
+			if (key !== 'apiKeys' && key !== 'apiKey' && key !== 'provider') {
+				mergedPrefs[key] = val;
+			}
+		}
+	}
+	if (localSettings) {
+		for (const [key, val] of Object.entries(localSettings)) {
+			mergedPrefs[key] = val;
+		}
+	}
 
 	return {
-		...DEFAULT_SETTINGS,
-		...(settings as Partial<UserSettings>),
+		apiKeys,
 		provider,
-		model: typeof settings.model === 'string' && settings.model.trim()
-			? settings.model as string
+		model: typeof mergedPrefs.model === 'string' && mergedPrefs.model.trim()
+			? mergedPrefs.model as string
 			: DEFAULT_SETTINGS.model,
-		profileSummary: typeof settings.profileSummary === 'string'
-			? settings.profileSummary
+		defaultTone: typeof mergedPrefs.defaultTone === 'string' && mergedPrefs.defaultTone.trim()
+			? mergedPrefs.defaultTone as string
+			: DEFAULT_SETTINGS.defaultTone,
+		commentLength:
+			typeof mergedPrefs.commentLength === 'string' &&
+			['short', 'medium', 'long'].includes(mergedPrefs.commentLength as string)
+				? mergedPrefs.commentLength as UserSettings['commentLength']
+				: DEFAULT_SETTINGS.commentLength,
+		profileSummary: typeof mergedPrefs.profileSummary === 'string'
+			? mergedPrefs.profileSummary
 			: DEFAULT_SETTINGS.profileSummary,
 		promptPreferences: normalizePromptPreferences(
-			settings.promptPreferences as Partial<UserSettings['promptPreferences']> | undefined,
+			mergedPrefs.promptPreferences as Partial<UserSettings['promptPreferences']> | undefined,
 		),
-		customTones: Array.isArray(settings.customTones) ? settings.customTones : DEFAULT_SETTINGS.customTones,
-		styleExamples: Array.isArray(settings.styleExamples) ? settings.styleExamples : DEFAULT_SETTINGS.styleExamples,
-		apiKeys,
+		customTones: normalizeCustomTones(mergedPrefs.customTones),
+		styleExamples: normalizeStyleExamples(mergedPrefs.styleExamples),
 	};
 }
 
 export async function saveSettings(settings: UserSettings): Promise<void> {
+	// Enforce bounds before saving
+	const bounded: UserSettings = {
+		...settings,
+		customTones: settings.customTones.slice(0, MAX_CUSTOM_TONES),
+		styleExamples: settings.styleExamples.slice(0, MAX_STYLE_EXAMPLES),
+	};
+
 	// Ensure no legacy top-level apiKey property is saved
-	const { apiKey: _legacyKey, ...cleanSettings } = settings as unknown as Record<string, unknown>;
+	const { apiKey: _legacyKey, ...cleanSettings } = bounded as unknown as Record<string, unknown>;
 	await chrome.storage.local.set({ [SETTINGS_KEY]: cleanSettings });
 	try {
-		const { apiKeys, apiKey: _legacySyncKey, ...syncableSettings } = cleanSettings;
+		const { apiKeys: _keys, apiKey: _legacySyncKey, provider: _prov, ...syncableSettings } = cleanSettings;
 		await chrome.storage.sync.set({ [SETTINGS_KEY]: syncableSettings });
 	} catch {
-		// Ignore sync storage errors
+		logger.warn('Could not sync settings to Chrome sync storage.');
 	}
 }
 
 export async function getHistory(): Promise<HistoryEntry[]> {
 	const stored = await chrome.storage.local.get(HISTORY_KEY);
 	const history = stored[HISTORY_KEY];
-	return Array.isArray(history) ? (history as HistoryEntry[]) : [];
+	if (!Array.isArray(history)) return [];
+	return history.filter(isValidHistoryEntry);
 }
 
 export async function addHistoryEntry(entry: HistoryEntry): Promise<void> {

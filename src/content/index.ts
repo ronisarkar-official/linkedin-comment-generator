@@ -29,9 +29,11 @@ style.textContent = `
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
     color: #191919;
     font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-height: 80vh;
+    overflow-y: auto;
     padding: 12px;
     position: fixed;
-    z-index: 2147483647;
+    z-index: 2147483640;
   }
   .lcg-panel-header { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
   .lcg-panel-header strong { font-size: 16px; }
@@ -59,9 +61,9 @@ style.textContent = `
   .lcg-variant-text { display: block; }
   .lcg-panel-status { align-items: center; color: #5f5f5f; display: flex; font-size: 12px; min-height: 17px; padding-top: 8px; }
   .lcg-panel-status-error { color: #b42318; }
-  .lcg-toast { background: #fff; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 320px; padding: 12px; position: fixed; z-index: 2147483647; }
+  .lcg-toast { background: #fff; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 320px; padding: 12px; position: fixed; z-index: 2147483640; }
   .lcg-toast-error { border-left: 4px solid #b42318; color: #7a271a; }
-  .lcg-floating-launcher { align-items: center; background: #0a66c2; border: 0; border-radius: 999px; bottom: 84px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); color: #fff; cursor: pointer; display: flex; font: 700 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; gap: 7px; padding: 13px 17px; position: fixed; right: 24px; z-index: 2147483646; }
+  .lcg-floating-launcher { align-items: center; background: #0a66c2; border: 0; border-radius: 999px; bottom: 84px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); color: #fff; cursor: pointer; display: flex; font: 700 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; gap: 7px; padding: 13px 17px; position: fixed; right: 24px; z-index: 2147483639; }
   .lcg-floating-launcher:hover { background: #004182; }
   @keyframes lcg-spin { to { transform: rotate(360deg); } }
 `
@@ -96,7 +98,7 @@ if (window.location.pathname.startsWith("/feed")) {
 
     if (!hasVisibleButton) {
       if (detectedPostCount === 0) {
-        console.warn("LinkedIn Comment Generator did not recognize any posts on this feed.")
+        console.warn("[LCG] Did not recognize any posts on this feed.")
       }
       const launcher = document.createElement("button")
       launcher.type = "button"
@@ -124,7 +126,10 @@ if (window.location.pathname.startsWith("/feed")) {
   }, 3_000)
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Security: only accept messages from this extension's own background/popup
+  if (sender.id !== chrome.runtime.id) return false
+
   if (!message || typeof message !== 'object') return false
   const candidate = message as Record<string, unknown>
 
@@ -134,7 +139,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const text = typeof payload?.text === 'string' ? payload.text.trim() : ''
   if (!text) {
     sendResponse({ ok: false, message: 'No comment text was provided.' })
-    return false
+    return true
   }
 
   void insertCommentIntoVisiblePost(text)

@@ -1,3 +1,4 @@
+import { logger } from '../logger';
 import { buildCommentPrompt } from '../prompt-templates';
 import type {
 	CommentRequest,
@@ -9,6 +10,8 @@ import type {
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
 import { getProvider } from './registry';
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface ChatCompletionResponse {
 	choices?: Array<{
@@ -173,6 +176,14 @@ export async function generateWithOpenAICompat(
 	const chatEndpoint = `${providerConfig.apiBase}/chat/completions`;
 	const apiKey = settings.apiKeys[settings.provider] ?? '';
 
+	// Security: validate the API base uses HTTPS before sending credentials
+	if (!providerConfig.apiBase.startsWith('https://')) {
+		throw new LlmProviderError(
+			'PROVIDER_ERROR',
+			`${providerLabel} API endpoint must use HTTPS.`,
+		);
+	}
+
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		Authorization: `Bearer ${apiKey}`,
@@ -185,6 +196,10 @@ export async function generateWithOpenAICompat(
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		const prompt = buildCommentPrompt(request, settings, history, attempt);
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+		logger.info(`${providerLabel} request started.`, { model, attempt });
 
 		// Build response_format based on provider capability
 		let responseFormat: Record<string, unknown> | undefined;
@@ -236,18 +251,31 @@ export async function generateWithOpenAICompat(
 				method: 'POST',
 				headers,
 				body: JSON.stringify(body),
+				signal: controller.signal,
 			});
-		} catch {
+		} catch (error) {
+			clearTimeout(timeout);
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				logger.error(`${providerLabel} request timed out.`, { model, attempt });
+				throw new LlmProviderError(
+					'NETWORK_ERROR',
+					`${providerLabel} request timed out. Try again.`,
+				);
+			}
+			logger.error(`${providerLabel} network error.`, { model, attempt });
 			throw new LlmProviderError(
 				'NETWORK_ERROR',
 				`Could not reach ${providerLabel}. Check your connection and try again.`,
 			);
+		} finally {
+			clearTimeout(timeout);
 		}
 
 		let payload: ChatCompletionResponse;
 		try {
 			payload = (await response.json()) as ChatCompletionResponse;
 		} catch {
+			logger.error(`${providerLabel} returned unparseable response.`, { model, status: response.status });
 			throw new LlmProviderError(
 				'INVALID_RESPONSE',
 				`${providerLabel} returned a response that could not be read.`,
@@ -257,6 +285,7 @@ export async function generateWithOpenAICompat(
 		if (!response.ok) {
 			const message =
 				payload.error?.message ?? `${providerLabel} rejected the request.`;
+			logger.warn(`${providerLabel} API error.`, { model, status: response.status, message });
 			if (response.status === 401 || response.status === 403) {
 				throw new LlmProviderError('INVALID_API_KEY', message);
 			}
@@ -291,9 +320,11 @@ export async function generateWithOpenAICompat(
 
 		const variants = parseContent(content, providerLabel);
 		if (attempt === 0 && needsFreshnessRetry(request, variants, history)) {
+			logger.info(`${providerLabel} freshness retry triggered.`, { model });
 			continue;
 		}
 
+		logger.info(`${providerLabel} request succeeded.`, { model, attempt });
 		return variants;
 	}
 

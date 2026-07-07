@@ -4,6 +4,7 @@ interface ApiKeyInputProps {
 	value: string;
 	providerLabel: string;
 	placeholder: string;
+	keyPrefix?: string;
 	onSave: (apiKey: string) => Promise<void>;
 }
 
@@ -11,6 +12,7 @@ export default function ApiKeyInput({
 	value,
 	providerLabel,
 	placeholder,
+	keyPrefix,
 	onSave,
 }: ApiKeyInputProps) {
 	const [apiKey, setApiKey] = useState(value);
@@ -34,6 +36,12 @@ export default function ApiKeyInput({
 			return;
 		}
 
+		if (keyPrefix && !normalized.startsWith(keyPrefix)) {
+			setIsError(true);
+			setFeedback(`${providerLabel} keys typically start with "${keyPrefix}". Double-check the key.`);
+			return;
+		}
+
 		setSaving(true);
 		setFeedback('');
 		try {
@@ -52,11 +60,11 @@ export default function ApiKeyInput({
 		<section className="space-y-2">
 			<div className="flex items-center justify-between">
 				<label
-					className="text-sm font-semibold text-slate-800"
+					className="text-sm font-semibold text-foreground"
 					htmlFor="api-key">
 					{providerLabel} API key
 				</label>
-				<span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+				<span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary-foreground">
 					Local only
 				</span>
 			</div>
@@ -73,12 +81,13 @@ export default function ApiKeyInput({
 						placeholder={placeholder}
 						autoComplete="off"
 						spellCheck={false}
-						className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 pr-14 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+						maxLength={256}
+						className="h-9 w-full rounded-md border border-input bg-background px-3 pr-14 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
 					/>
 					<button
 						type="button"
 						onClick={() => setVisible((current) => !current)}
-						className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+						className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
 						{visible ? 'Hide' : 'Show'}
 					</button>
 				</div>
@@ -86,12 +95,12 @@ export default function ApiKeyInput({
 					type="button"
 					onClick={handleSave}
 					disabled={saving}
-					className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+					className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
 					{saving ? 'Saving…' : 'Save'}
 				</button>
 			</div>
 			<p
-				className={`min-h-4 text-xs ${isError ? 'text-red-600' : 'text-emerald-700'}`}
+				className={`min-h-4 text-xs ${isError ? 'text-destructive' : 'text-muted-foreground'}`}
 				role={isError ? 'alert' : 'status'}>
 				{feedback}
 			</p>

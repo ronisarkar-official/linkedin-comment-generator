@@ -178,11 +178,28 @@ function getPreferenceInstructions(
 }
 
 function sanitizeField(value: string, maxLen: number): string {
-	const stripped = value
-		.replace(/<\/?linkedin_post>/gi, '')
-		.replace(/<\/?author_name>/gi, '');
-	const collapsed = stripped.replace(/\s+/g, ' ').trim();
-	return collapsed.slice(0, maxLen);
+	let sanitized = value;
+
+	// Strip any XML/HTML-like tags (covers <linkedin_post>, <system>, <instructions>, etc.)
+	sanitized = sanitized.replace(/<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s[^>]*)?\s*>/g, '');
+
+	// Strip common prompt injection phrases (case-insensitive)
+	const injectionPatterns = [
+		/ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|rules?|prompts?|context)/gi,
+		/(?:you\s+are|act\s+as|pretend\s+to\s+be|behave\s+as)\s+(?:a\s+)?(?:new|different|another)\s/gi,
+		/(?:system|assistant|user)\s*:\s*/gi,
+		/\[(?:SYSTEM|INST|\/INST)\]/gi,
+		/<<\s*SYS\s*>>/gi,
+		/(?:forget|disregard|override)\s+(?:your|all|the)\s+(?:previous|prior|original)\s/gi,
+		/new\s+(?:system\s+)?(?:instructions?|rules?|role|prompt)\s*:/gi,
+	];
+	for (const pattern of injectionPatterns) {
+		sanitized = sanitized.replace(pattern, '');
+	}
+
+	// Collapse excessive whitespace and newlines
+	sanitized = sanitized.replace(/\n{3,}/g, '\n\n').replace(/\s+/g, ' ').trim();
+	return sanitized.slice(0, maxLen);
 }
 
 export function buildCommentPrompt(

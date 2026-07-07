@@ -48,6 +48,7 @@ function setLoading(button: HTMLButtonElement, loading: boolean): void {
 	button.textContent = 'Generate Comment';
 }
 
+/** Check if a request would exceed the rate limit, without mutating state. */
 function checkClientRateLimit(post: HTMLElement): string | null {
 	const now = Date.now();
 	const lastPostRequest = lastRequestByPost.get(post) ?? 0;
@@ -67,9 +68,13 @@ function checkClientRateLimit(post: HTMLElement): string | null {
 		return `Local rate limit reached. Try again in ${retrySeconds} seconds.`;
 	}
 
-	lastRequestByPost.set(post, now);
-	recentRequests.push(now);
 	return null;
+}
+
+/** Record that a request was made (call only after successful API response). */
+function recordRequest(post: HTMLElement): void {
+	lastRequestByPost.set(post, Date.now());
+	recentRequests.push(Date.now());
 }
 
 function getFailureMessage(failure: GenerateCommentsFailure): string {
@@ -211,15 +216,16 @@ export function injectGenerateButton(
 			return;
 		}
 
+		// Check rate limit BEFORE loading settings to avoid wasting slots
+		const rateLimitError = checkClientRateLimit(post);
+		if (rateLimitError) {
+			callbacks.onError(post, rateLimitError, button);
+			return;
+		}
+
 		setLoading(button, true);
 		try {
 			const settings = await requestSettings();
-
-			const rateLimitError = checkClientRateLimit(post);
-			if (rateLimitError) {
-				callbacks.onError(post, rateLimitError, button);
-				return;
-			}
 
 			const response = await sendGenerateRequest(
 				postText,
@@ -232,6 +238,9 @@ export function injectGenerateButton(
 				callbacks.onError(post, getFailureMessage(response), button);
 				return;
 			}
+
+			// Only record the rate limit slot after a successful response
+			recordRequest(post);
 
 			const onRefine: RefineCallback = async (directive: string) => {
 				const rateLimitErr = checkClientRateLimit(post);
@@ -246,6 +255,7 @@ export function injectGenerateButton(
 						directive,
 					);
 					if (!res.ok) return getFailureMessage(res);
+					recordRequest(post);
 					return res.variants;
 				} catch (err) {
 					return err instanceof Error ? err.message : 'Could not refine comments.';

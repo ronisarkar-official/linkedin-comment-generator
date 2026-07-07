@@ -170,6 +170,27 @@ export const PROVIDERS: ProviderConfig[] = [
 
 const providerMap = new Map(PROVIDERS.map((p) => [p.id, p]));
 
+/**
+ * Safe-character pattern for model IDs.
+ * Allows alphanumeric, hyphens, dots, underscores, forward slashes (for
+ * namespaced models like "meta-llama/llama-3.3-70b-instruct"), and colons.
+ */
+const SAFE_MODEL_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$/;
+
+/**
+ * Validates that a model ID contains only safe characters and cannot
+ * be used for URL path injection when interpolated into an endpoint.
+ */
+export function validateModelId(modelId: string): string {
+	const trimmed = modelId.trim();
+	if (!SAFE_MODEL_ID_PATTERN.test(trimmed)) {
+		throw new Error(
+			`Invalid model ID: "${trimmed.slice(0, 40)}". Model IDs must contain only alphanumeric characters, hyphens, dots, underscores, slashes, and colons.`,
+		);
+	}
+	return trimmed;
+}
+
 export function getProvider(id: LlmProvider): ProviderConfig {
 	const provider = providerMap.get(id);
 	if (!provider) {

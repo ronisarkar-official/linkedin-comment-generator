@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+
+const MAX_STYLE_EXAMPLES = 5;
 
 interface StyleExamplesProps {
 	styleExamples: string[];
@@ -11,6 +12,8 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 	const [isAdding, setIsAdding] = useState(false);
 	const [error, setError] = useState('');
 
+	const canAdd = styleExamples.length < MAX_STYLE_EXAMPLES;
+
 	const handleAdd = () => {
 		if (!example.trim()) {
 			setError('Please paste an example comment.');
@@ -18,6 +21,10 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 		}
 		if (styleExamples.includes(example.trim())) {
 			setError('This example is already added.');
+			return;
+		}
+		if (!canAdd) {
+			setError(`Maximum of ${MAX_STYLE_EXAMPLES} examples reached.`);
 			return;
 		}
 		onChange([...styleExamples, example.trim()]);
@@ -34,33 +41,37 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 		<section className="space-y-2">
 			<div className="flex items-center justify-between">
 				<div>
-					<label className="text-sm font-semibold text-slate-800">
+					<label className="text-sm font-semibold text-foreground">
 						Voice Mirroring
+						<span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+							({styleExamples.length}/{MAX_STYLE_EXAMPLES})
+						</span>
 					</label>
-					<span className="block text-[10px] text-slate-500">
+					<span className="block text-[10px] text-muted-foreground">
 						Paste past comments to teach AI your writing rhythm
 					</span>
 				</div>
-				{!isAdding && (
+				{!isAdding && canAdd && (
 					<button
 						type="button"
 						onClick={() => setIsAdding(true)}
-						className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+						className="text-xs font-semibold text-primary hover:text-primary/80">
 						+ Add Example
 					</button>
 				)}
 			</div>
 
 			{isAdding && (
-				<div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50/50 p-3 text-sm">
+				<div className="space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-sm">
 					<textarea
 						placeholder="Paste a real LinkedIn comment you wrote that represents your style..."
 						value={example}
 						onChange={(e) => setExample(e.target.value)}
 						rows={3}
-						className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 outline-none focus:border-blue-600"
+						maxLength={500}
+						className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
 					/>
-					{error && <p className="text-[11px] text-red-600">{error}</p>}
+					{error && <p className="text-[11px] text-destructive">{error}</p>}
 					<div className="flex justify-end gap-2 pt-1">
 						<button
 							type="button"
@@ -68,13 +79,13 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 								setIsAdding(false);
 								setError('');
 							}}
-							className="rounded px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900">
+							className="rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 							Cancel
 						</button>
 						<button
 							type="button"
 							onClick={handleAdd}
-							className="rounded bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+							className="rounded bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
 							Save Example
 						</button>
 					</div>
@@ -82,7 +93,7 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 			)}
 
 			{styleExamples.length === 0 && !isAdding ? (
-				<p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-400">
+				<p className="rounded-xl border border-dashed border-border bg-muted p-3 text-center text-xs text-muted-foreground">
 					No style examples yet. Add examples to make AI sound like you!
 				</p>
 			) : (
@@ -90,12 +101,12 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 					{styleExamples.map((ex, index) => (
 						<div
 							key={index}
-							className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+							className="flex items-start justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
 							<p className="line-clamp-2 italic">"{ex}"</p>
 							<button
 								type="button"
 								onClick={() => handleDelete(index)}
-								className="text-slate-400 hover:text-red-600 shrink-0"
+								className="text-muted-foreground hover:text-destructive shrink-0"
 								title="Delete example">
 								×
 							</button>

@@ -140,20 +140,20 @@ export default function App() {
 	};
 
 	return (
-		<main className="w-[360px] min-h-[500px] bg-slate-50 text-slate-900">
-			<header className="bg-gradient-to-br from-blue-700 to-blue-500 px-5 py-4 text-white">
+		<main className="w-[360px] min-h-[500px] bg-background text-foreground">
+			<header className="bg-primary px-5 py-4 text-primary-foreground">
 				<div className="flex items-center gap-3">
 					<img
 						src="/icons/icon48.png"
 						alt=""
-						className="h-10 w-10 rounded-xl shadow-sm ring-1 ring-white/20"
+						className="h-10 w-10 rounded-xl shadow-sm ring-1 ring-primary-foreground/20"
 					/>
 					<div className="min-w-0 flex-1">
 						<h1 className="truncate text-base font-bold leading-tight">
 							LinkedIn Comment Generator
 						</h1>
 						<div className="mt-1 flex items-center justify-between gap-2">
-							<span className="text-[11px] font-medium text-blue-100 truncate">
+							<span className="text-[11px] font-medium text-primary-foreground/70 truncate">
 								{currentProvider.label} / {getModelLabel(settings.provider, settings.model)}
 							</span>
 							<Button
@@ -165,7 +165,7 @@ export default function App() {
 									/>
 								}
 								size="sm"
-								className="h-6 gap-1 rounded-full bg-pink-500/90 px-2.5 text-[10px] font-bold text-white hover:bg-pink-500"
+								className="h-6 gap-1 rounded-full bg-destructive/90 px-2.5 text-[10px] font-bold text-destructive-foreground hover:bg-destructive"
 							>
 								<Heart className="h-3 w-3 fill-current" />
 								Sponsor
@@ -176,22 +176,22 @@ export default function App() {
 			</header>
 
 			{loading ? (
-				<div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
+				<div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
 					<Loader2 className="h-4 w-4 animate-spin" />
 					Loading settings…
 				</div>
 			) : (
 				<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')}>
-					<TabsList className="grid w-full grid-cols-2 rounded-none border-b border-slate-200 bg-white p-0">
+					<TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border bg-card p-0">
 						<TabsTrigger
 							value="settings"
-							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
 						>
 							⚙️ Settings
 						</TabsTrigger>
 						<TabsTrigger
 							value="history"
-							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
 						>
 							📜 History
 						</TabsTrigger>
@@ -200,13 +200,13 @@ export default function App() {
 					<TabsContent value="settings" className="m-0 space-y-4 p-4">
 						{/* Provider & Model selectors */}
 						<div className="space-y-2">
-							<Label className="text-sm font-semibold text-slate-800">AI provider & model</Label>
+							<Label className="text-sm font-semibold text-foreground">AI provider &amp; model</Label>
 							<div className="grid grid-cols-2 gap-2">
 								<select
 									id="provider-select"
 									value={settings.provider}
 									onChange={(e) => updateProvider(e.target.value as LlmProvider)}
-									className="h-9 w-full appearance-none rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
 								>
 									{PROVIDERS.map((p) => (
 										<option key={p.id} value={p.id}>
@@ -218,7 +218,7 @@ export default function App() {
 									id="model-select"
 									value={settings.model}
 									onChange={(e) => updateModel(e.target.value)}
-									className="h-9 w-full appearance-none rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
 								>
 									{currentProvider.models.map((m) => (
 										<option key={m.id} value={m.id}>
@@ -233,6 +233,7 @@ export default function App() {
 							value={settings.apiKeys[settings.provider] ?? ''}
 							providerLabel={currentProvider.label}
 							placeholder={currentProvider.keyPlaceholder}
+							keyPrefix={currentProvider.keyPrefix}
 							onSave={saveApiKey}
 						/>
 
@@ -244,10 +245,10 @@ export default function App() {
 
 						<div className="space-y-2">
 							<div className="flex items-end justify-between gap-3">
-								<Label htmlFor="profile-summary" className="text-sm font-semibold text-slate-800">
+								<Label htmlFor="profile-summary" className="text-sm font-semibold text-foreground">
 									Your profile / interests
 								</Label>
-								<span className="text-[10px] font-medium text-slate-500">
+								<span className="text-[10px] font-medium text-muted-foreground">
 									Helps the comment sound more like you
 								</span>
 							</div>
@@ -257,6 +258,7 @@ export default function App() {
 								onChange={(event) => updateProfileSummary(event.target.value)}
 								placeholder="Example: product designer, cares about accessibility, likes direct and warm writing"
 								rows={2}
+								maxLength={600}
 								className="text-xs"
 							/>
 						</div>
@@ -264,17 +266,17 @@ export default function App() {
 						<StyleExamples styleExamples={settings.styleExamples || []} onChange={updateStyleExamples} />
 
 						<div className="space-y-2">
-							<Label className="text-sm font-semibold text-slate-800">Prompt quality controls</Label>
-							<Card className="border-slate-200">
+							<Label className="text-sm font-semibold text-foreground">Prompt quality controls</Label>
+							<Card className="border-border">
 								<CardContent className="space-y-1 p-3">
 									{QUALITY_CONTROLS.map((option) => (
 										<div
 											key={option.key}
-											className="flex items-start justify-between gap-3 rounded-lg px-1 py-1.5 hover:bg-slate-50"
+											className="flex items-start justify-between gap-3 rounded-lg px-1 py-1.5 hover:bg-accent"
 										>
 											<div>
-												<p className="text-xs font-medium text-slate-800">{option.label}</p>
-												<p className="text-[11px] text-slate-500">{option.detail}</p>
+												<p className="text-xs font-medium text-foreground">{option.label}</p>
+												<p className="text-[11px] text-muted-foreground">{option.detail}</p>
 											</div>
 											<Switch
 												checked={settings.promptPreferences[option.key]}
@@ -289,7 +291,7 @@ export default function App() {
 						<Button
 							onClick={savePreferences}
 							disabled={saving}
-							className="w-full bg-slate-900 text-xs font-semibold hover:bg-slate-700"
+							className="w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
 						>
 							{saving ? (
 								<>
@@ -301,7 +303,7 @@ export default function App() {
 							)}
 						</Button>
 
-						<p className="min-h-4 text-center text-xs text-emerald-700" role="status">
+						<p className="min-h-4 text-center text-xs text-muted-foreground" role="status">
 							{status}
 						</p>
 					</TabsContent>
