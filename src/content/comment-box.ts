@@ -20,6 +20,28 @@ const congratulationLabels = {
 let activePanel: HTMLElement | null = null;
 let activePanelCleanup: (() => void) | null = null;
 
+const PANEL_POSITION_KEY = 'lcg-panel-position';
+
+function savePanelPosition(): void {
+	if (!activePanel) return;
+	const left = parseInt(activePanel.style.left);
+	const top = parseInt(activePanel.style.top);
+	if (!isNaN(left) && !isNaN(top)) {
+		chrome.storage.local.set({ [PANEL_POSITION_KEY]: { left, top } }).catch(() => {});
+	}
+}
+
+async function loadPanelPosition(): Promise<{ left: number; top: number } | null> {
+	try {
+		const result = await chrome.storage.local.get(PANEL_POSITION_KEY);
+		const pos = result[PANEL_POSITION_KEY] as { left: number; top: number } | undefined;
+		if (pos && typeof pos.left === 'number' && typeof pos.top === 'number') {
+			return pos as { left: number; top: number };
+		}
+	} catch {}
+	return null;
+}
+
 function waitForCommentInput(post: HTMLElement): Promise<HTMLElement | null> {
 	const existing = findCommentInput(post);
 	if (existing) return Promise.resolve(existing);
@@ -171,24 +193,77 @@ export async function insertCommentIntoVisiblePost(text: string): Promise<boolea
 
 function positionPanel(panel: HTMLElement, anchor: HTMLElement): void {
 	const rect = anchor.getBoundingClientRect();
-	const width = Math.min(380, window.innerWidth - 24);
-	const left = Math.min(
-		Math.max(12, rect.left),
-		window.innerWidth - width - 12,
-	);
-	const estimatedHeight = 330;
-	const preferredTop = rect.bottom + 8;
-	const top =
-		preferredTop + estimatedHeight < window.innerHeight ?
-			preferredTop
-		:	Math.max(12, rect.top - estimatedHeight - 8);
-
+	const gap = 8;
+	const width = Math.min(380, window.innerWidth - gap * 3);
 	panel.style.width = `${width}px`;
+
+	const panelHeight = panel.offsetHeight || 330;
+
+	const centerLeft = rect.left + (rect.width - width) / 2;
+	const left = Math.max(gap, Math.min(centerLeft, window.innerWidth - width - gap));
 	panel.style.left = `${left}px`;
+
+	const spaceBelow = window.innerHeight - rect.bottom;
+	const spaceAbove = rect.top;
+	let top: number;
+	if (spaceBelow >= panelHeight + gap) {
+		top = rect.bottom + gap;
+	} else if (spaceAbove >= panelHeight + gap) {
+		top = Math.max(gap, rect.top - panelHeight - gap);
+	} else {
+		top = Math.max(gap, (window.innerHeight - panelHeight) / 2);
+	}
 	panel.style.top = `${top}px`;
 }
 
+function makeDraggable(panel: HTMLElement, handle: HTMLElement): () => void {
+	let isDragging = false;
+	let startX = 0;
+	let startY = 0;
+	let initialLeft = 0;
+	let initialTop = 0;
+
+	const onMouseDown = (e: MouseEvent) => {
+		if (e.button !== 0) return;
+		isDragging = true;
+		startX = e.clientX;
+		startY = e.clientY;
+		initialLeft = parseInt(panel.style.left) || 0;
+		initialTop = parseInt(panel.style.top) || 0;
+		panel.style.transition = 'none';
+		handle.style.cursor = 'grabbing';
+		e.preventDefault();
+	};
+
+	const onMouseMove = (e: MouseEvent) => {
+		if (!isDragging) return;
+		const pw = panel.offsetWidth;
+		const ph = panel.offsetHeight;
+		panel.style.left = `${Math.max(0, Math.min(initialLeft + e.clientX - startX, window.innerWidth - pw))}px`;
+		panel.style.top = `${Math.max(0, Math.min(initialTop + e.clientY - startY, window.innerHeight - ph))}px`;
+	};
+
+	const onMouseUp = () => {
+		if (!isDragging) return;
+		isDragging = false;
+		handle.style.cursor = 'grab';
+		savePanelPosition();
+	};
+
+	handle.addEventListener('mousedown', onMouseDown);
+	document.addEventListener('mousemove', onMouseMove);
+	document.addEventListener('mouseup', onMouseUp);
+
+	return () => {
+		handle.removeEventListener('mousedown', onMouseDown);
+		document.removeEventListener('mousemove', onMouseMove);
+		document.removeEventListener('mouseup', onMouseUp);
+		handle.style.cursor = '';
+	};
+}
+
 function closeActivePanel(): void {
+	savePanelPosition();
 	activePanelCleanup?.();
 	activePanelCleanup = null;
 	activePanel?.remove();
@@ -385,6 +460,13 @@ export function showVariantPicker(
 	panel.append(cardsContainer, status);
 	document.body.append(panel);
 	positionPanel(panel, anchor);
+	const dragCleanup = makeDraggable(panel, header);
+	loadPanelPosition().then((saved) => {
+		if (saved) {
+			panel.style.left = `${Math.max(0, Math.min(saved.left, window.innerWidth - panel.offsetWidth))}px`;
+			panel.style.top = `${Math.max(0, Math.min(saved.top, window.innerHeight - panel.offsetHeight))}px`;
+		}
+	});
 	activePanel = panel;
 
 	// Focus the close button on open for accessibility
@@ -413,6 +495,7 @@ export function showVariantPicker(
 
 	// Store cleanup function so closeActivePanel can remove listeners
 	activePanelCleanup = () => {
+		dragCleanup();
 		window.clearTimeout(outsideClickTimer);
 		document.removeEventListener('click', handleOutsideClick, true);
 		document.removeEventListener('keydown', handleEscape, true);

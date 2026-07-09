@@ -35,10 +35,11 @@ style.textContent = `
     position: fixed;
     z-index: 2147483640;
   }
-  .lcg-panel-header { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .lcg-panel-header { align-items: center; cursor: grab; display: flex; justify-content: space-between; margin-bottom: 8px; user-select: none; }
   .lcg-panel-header strong { font-size: 16px; }
-  .lcg-close-button { background: transparent; border: 0; border-radius: 50%; cursor: pointer; font-size: 24px; height: 32px; line-height: 1; width: 32px; }
-  .lcg-close-button:hover { background: #f3f2ef; }
+  .lcg-close-button { align-items: center; background: rgba(0,0,0,0.04); border: 0; border-radius: 50%; color: #666; cursor: pointer; display: flex; font-size: 18px; font-weight: 700; height: 28px; justify-content: center; line-height: 1; transition: background 0.15s, color 0.15s; width: 28px; }
+  .lcg-close-button:hover { background: rgba(0,0,0,0.12); color: #191919; }
+  .lcg-close-button:active { background: rgba(0,0,0,0.2); }
   .lcg-variant-card { background: #fff; border: 1px solid #e0dfdc; border-radius: 8px; color: #191919; cursor: pointer; display: block; margin-top: 8px; padding: 10px; text-align: left; width: 100%; }
   .lcg-variant-card:hover { background: #f5f9fd; border-color: #0a66c2; }
   .lcg-variant-card:disabled { cursor: wait; opacity: 0.65; }
