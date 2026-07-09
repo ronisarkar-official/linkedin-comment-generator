@@ -78,8 +78,16 @@ function writeToNativeInput(
 	dispatchEditorInput(input, text);
 }
 
+function safeFocus(el: HTMLElement): void {
+	try {
+		el.focus({ preventScroll: true });
+	} catch {
+		el.focus();
+	}
+}
+
 function writeToContentEditable(input: HTMLElement, text: string): void {
-	input.focus({ preventScroll: true });
+	safeFocus(input);
 
 	const selection = window.getSelection();
 	const range = document.createRange();
@@ -122,7 +130,7 @@ async function insertCommentText(
 		input instanceof HTMLTextAreaElement ||
 		input instanceof HTMLInputElement
 	) {
-		input.focus({ preventScroll: true });
+		safeFocus(input);
 		writeToNativeInput(input, text);
 	} else {
 		writeToContentEditable(input, text);
@@ -140,7 +148,7 @@ async function insertCommentText(
 	) {
 		writeToNativeInput(input, text);
 	} else {
-		input.focus({ preventScroll: true });
+		safeFocus(input);
 		input.replaceChildren(document.createTextNode(text));
 		dispatchEditorInput(input, text);
 	}

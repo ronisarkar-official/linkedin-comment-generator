@@ -157,13 +157,14 @@ export default function App() {
 								{currentProvider.label} / {getModelLabel(settings.provider, settings.model)}
 							</span>
 							<Button
-								render={
+								render={(props) => (
 									<a
+										{...props}
 										href="https://github.com/sponsors/ronisarkar-official"
 										target="_blank"
 										rel="noopener noreferrer"
 									/>
-								}
+								)}
 								size="sm"
 								className="h-6 gap-1 rounded-full bg-destructive/90 px-2.5 text-[10px] font-bold text-destructive-foreground hover:bg-destructive"
 							>

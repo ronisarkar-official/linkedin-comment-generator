@@ -17,9 +17,17 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 
 const PREFIX = '[LCG]';
 
-/** Minimum level that will actually be emitted.  Change to 'warn' or 'error'
- *  for quieter production builds if desired. */
-let minLevel: LogLevel = 'debug';
+/** Minimum level that will actually be emitted.  Production builds default
+ *  to 'warn' to keep the console clean; development defaults to 'debug'. */
+const IS_PROD: boolean = (() => {
+	try {
+		// Vite replaces import.meta.env.PROD at build time
+		return !!(import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD;
+	} catch {
+		return true;
+	}
+})();
+let minLevel: LogLevel = IS_PROD ? 'warn' : 'debug';
 
 function shouldLog(level: LogLevel): boolean {
 	return LEVEL_ORDER[level] >= LEVEL_ORDER[minLevel];

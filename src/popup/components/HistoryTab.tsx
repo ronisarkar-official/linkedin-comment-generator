@@ -21,6 +21,11 @@ export default function HistoryTab() {
 
 	useEffect(() => {
 		loadHistory();
+		const listener = (changes: Record<string, chrome.storage.StorageChange>) => {
+			if (changes.history) loadHistory();
+		};
+		chrome.storage.onChanged.addListener(listener);
+		return () => chrome.storage.onChanged.removeListener(listener);
 	}, []);
 
 	const handleDelete = async (id: string) => {
@@ -81,8 +86,8 @@ export default function HistoryTab() {
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-				<span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
+			<div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+				<span className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
 				Loading history…
 			</div>
 		);
@@ -91,8 +96,8 @@ export default function HistoryTab() {
 	if (history.length === 0) {
 		return (
 			<div className="py-12 text-center">
-				<p className="text-sm font-medium text-slate-600">No comment history yet.</p>
-				<p className="mt-1 text-xs text-slate-400">
+				<p className="text-sm font-medium text-foreground">No comment history yet.</p>
+				<p className="mt-1 text-xs text-muted-foreground">
 					Generate comments on LinkedIn to see your recent drafts here!
 				</p>
 			</div>
@@ -102,13 +107,13 @@ export default function HistoryTab() {
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between pb-1">
-				<span className="text-xs font-semibold text-slate-500">
+				<span className="text-xs font-semibold text-muted-foreground">
 					{history.length} {history.length === 1 ? 'generation' : 'generations'} saved
 				</span>
 				<button
 					type="button"
 					onClick={handleClearAll}
-					className="text-xs font-semibold text-red-600 hover:text-red-800">
+					className="text-xs font-semibold text-destructive hover:text-destructive/80">
 					Clear All
 				</button>
 			</div>
@@ -125,27 +130,27 @@ export default function HistoryTab() {
 					return (
 						<div
 							key={entry.id}
-							className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm space-y-2">
-							<div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+							className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-2">
+							<div className="flex items-start justify-between gap-2 border-b border-border pb-2">
 								<div>
 									<div className="flex items-center gap-1.5">
-										<span className="font-semibold text-xs text-slate-800">
+										<span className="font-semibold text-xs text-card-foreground">
 											{entry.authorName || 'LinkedIn Post'}
 										</span>
-										<span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 uppercase">
+										<span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
 											{entry.tone || 'variant'}
 										</span>
 									</div>
-									<p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1 italic">
+									<p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1 italic">
 										"{entry.postText}"
 									</p>
 								</div>
 								<div className="flex items-center gap-2 shrink-0">
-									<span className="text-[10px] text-slate-400">{dateStr}</span>
+									<span className="text-[10px] text-muted-foreground">{dateStr}</span>
 									<button
 										type="button"
 										onClick={() => handleDelete(entry.id)}
-										className="text-slate-400 hover:text-red-600 font-bold"
+										className="text-muted-foreground hover:text-destructive font-bold"
 										title="Delete entry">
 										×
 									</button>
@@ -159,9 +164,9 @@ export default function HistoryTab() {
 										type="button"
 										onClick={() => handleInsert(v.text)}
 										disabled={insertingText === v.text}
-										className="group relative block w-full rounded-lg bg-slate-50 p-2 text-left text-xs text-slate-700 transition hover:bg-blue-50/50 disabled:cursor-wait disabled:opacity-70">
+										className="group relative block w-full rounded-lg bg-muted p-2 text-left text-xs text-foreground transition hover:bg-accent disabled:cursor-wait disabled:opacity-70">
 										<p className="pr-12">{v.text}</p>
-										<span className="absolute right-2 top-2 rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 shadow-sm border border-slate-200 opacity-80 group-hover:opacity-100 hover:bg-blue-600 hover:text-white transition">
+										<span className="absolute right-2 top-2 rounded bg-card px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm border border-border opacity-80 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition">
 											{insertingText === v.text ? 'Inserting…' : 'Insert'}
 										</span>
 									</button>
@@ -172,7 +177,7 @@ export default function HistoryTab() {
 				})}
 			</div>
 			{status ? (
-				<p className="pt-1 text-xs text-slate-500">{status}</p>
+				<p className="pt-1 text-xs text-muted-foreground">{status}</p>
 			) : null}
 		</div>
 	);

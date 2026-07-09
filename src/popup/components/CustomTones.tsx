@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CustomTone } from '../../lib/types';
 
 const MAX_CUSTOM_TONES = 10;
+const BUILTIN_TONES = ['professional', 'witty', 'supportive'];
 
 interface CustomTonesProps {
 	customTones: CustomTone[];
@@ -19,6 +20,10 @@ export default function CustomTones({ customTones, onChange }: CustomTonesProps)
 	const handleAdd = () => {
 		if (!label.trim() || !prompt.trim()) {
 			setError('Please enter both a name and instructions.');
+			return;
+		}
+		if (BUILTIN_TONES.includes(label.trim().toLowerCase())) {
+			setError(`"${label.trim()}" is a built-in tone. Choose a different name.`);
 			return;
 		}
 		if (customTones.some((t) => t.label.toLowerCase() === label.trim().toLowerCase())) {

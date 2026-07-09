@@ -4,11 +4,11 @@ import type {
 	CommentRequest,
 	CommentVariant,
 	HistoryEntry,
-	Tone,
 	UserSettings,
 } from '../types';
 import { LlmProviderError } from '../types';
 import { needsFreshnessRetry } from './freshness';
+import { parseRetryAfter, validateVariants } from './parse-response';
 import { validateModelId } from './registry';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -24,60 +24,6 @@ interface GeminiResponse {
 		message?: string;
 		status?: string;
 	};
-}
-
-function parseRetryAfter(response: Response): number | undefined {
-	const value = response.headers.get('retry-after');
-	if (!value) return undefined;
-	const seconds = Number(value);
-	return Number.isFinite(seconds) ? seconds : undefined;
-}
-
-function validateVariants(value: unknown): CommentVariant[] {
-	if (!Array.isArray(value) || value.length !== 3) {
-		throw new LlmProviderError(
-			'INVALID_RESPONSE',
-			'Gemini returned an unexpected response shape.',
-		);
-	}
-
-	const variants = value.map((item) => {
-		if (!item || typeof item !== 'object') {
-			throw new LlmProviderError(
-				'INVALID_RESPONSE',
-				'Gemini returned an invalid comment variant.',
-			);
-		}
-
-		const candidate = item as Record<string, unknown>;
-		if (
-			typeof candidate.tone !== 'string' ||
-			!candidate.tone.trim() ||
-			typeof candidate.text !== 'string' ||
-			!candidate.text.trim() ||
-			typeof candidate.congratulation !== 'boolean'
-		) {
-			throw new LlmProviderError(
-				'INVALID_RESPONSE',
-				'Gemini returned an invalid comment variant.',
-			);
-		}
-
-		return {
-			tone: candidate.tone as Tone,
-			text: candidate.text.trim(),
-			congratulation: candidate.congratulation,
-		};
-	});
-
-	if (new Set(variants.map((variant) => variant.tone)).size !== 3) {
-		throw new LlmProviderError(
-			'INVALID_RESPONSE',
-			'Gemini did not return all three requested tones.',
-		);
-	}
-
-	return variants;
 }
 
 export async function generateWithGemini(
@@ -204,7 +150,7 @@ export async function generateWithGemini(
 
 		let variants: CommentVariant[];
 		try {
-			variants = validateVariants(JSON.parse(rawText) as unknown);
+			variants = validateVariants(JSON.parse(rawText) as unknown, 'Gemini');
 		} catch (error) {
 			if (error instanceof LlmProviderError) throw error;
 			throw new LlmProviderError(
