@@ -11,7 +11,7 @@ function isNearDuplicate(left: string, right: string): boolean {
 	return sameOpening(left, right) || similarity(left, right) >= 0.72;
 }
 
-function relevantHistoryEntries(
+export function relevantHistoryEntries(
 	request: CommentRequest,
 	history: HistoryEntry[],
 ): HistoryEntry[] {

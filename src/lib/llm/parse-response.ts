@@ -1,4 +1,4 @@
-import type { CommentVariant, Tone } from '../types';
+import type { CommentVariant } from '../types';
 import { LlmProviderError } from '../types';
 
 /**
@@ -36,7 +36,7 @@ export function validateVariants(value: unknown, providerLabel: string): Comment
 		}
 
 		return {
-			tone: candidate.tone as Tone,
+			tone: candidate.tone,
 			text: candidate.text.trim(),
 			congratulation: candidate.congratulation,
 		};
@@ -131,7 +131,7 @@ export function parseContent(content: string, providerLabel: string): CommentVar
 			.replace(/^[-*]\s*/, '');
 		if (text && match[1].trim()) {
 			labelledVariants.push({
-				tone: match[1].trim().toLowerCase() as Tone,
+				tone: match[1].trim().toLowerCase(),
 				text,
 				congratulation: inferCongratulation(text),
 			});

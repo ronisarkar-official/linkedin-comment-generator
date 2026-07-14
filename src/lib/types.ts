@@ -1,4 +1,6 @@
-export type Tone = 'professional' | 'witty' | 'supportive' | string;
+export type Tone = 'professional' | 'witty' | 'supportive';
+
+export const BUILTIN_TONES = ['professional', 'witty', 'supportive'] as const;
 
 export interface CustomTone {
 	id: string;
@@ -34,7 +36,7 @@ export interface UserSettings {
 	apiKeys: ProviderApiKeys;
 	provider: LlmProvider;
 	model: string;
-	defaultTone: Tone;
+	defaultTone: string;
 	commentLength: CommentLength;
 	profileSummary: string;
 	promptPreferences: PromptPreferences;
@@ -45,13 +47,13 @@ export interface UserSettings {
 export interface CommentRequest {
 	postText: string;
 	authorName?: string;
-	tone: Tone;
+	tone: string;
 	length: string;
 	customDirective?: string;
 }
 
 export interface CommentVariant {
-	tone: Tone;
+	tone: string;
 	text: string;
 	congratulation: boolean;
 }
@@ -106,7 +108,9 @@ export type ErrorCode =
 	| 'INVALID_API_KEY'
 	| 'RATE_LIMITED'
 	| 'NETWORK_ERROR'
+	| 'OFFLINE'
 	| 'INVALID_RESPONSE'
+	| 'INVALID_REQUEST'
 	| 'PROVIDER_ERROR'
 	| 'UNKNOWN_ERROR';
 

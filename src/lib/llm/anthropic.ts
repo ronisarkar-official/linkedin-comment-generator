@@ -47,7 +47,8 @@ export async function generateWithAnthropic(
 					'Content-Type': 'application/json',
 					'x-api-key': settings.apiKeys.anthropic ?? '',
 					'anthropic-version': '2023-06-01',
-					'anthropic-dangerous-direct-browser-access': 'true',
+					// Required for browser-to-API calls (not a CORS header — Anthropic allows this)
+			'anthropic-dangerous-direct-browser-access': 'true',
 				},
 				body: JSON.stringify({
 					model,

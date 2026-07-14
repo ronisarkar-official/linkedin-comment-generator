@@ -1,10 +1,11 @@
-import type {
-	CommentRequest,
-	CustomTone,
-	HistoryEntry,
-	UserSettings,
+import {
+	BUILTIN_TONES,
+	type CommentRequest,
+	type CustomTone,
+	type HistoryEntry,
+	type UserSettings,
 } from './types';
-import { similarity } from './text-utils';
+import { relevantHistoryEntries } from './llm/freshness';
 
 const lengthGuidance: Record<string, string> = {
 	short: 'one concise sentence, no more than 20 words',
@@ -46,15 +47,6 @@ function trimSnippet(value: string, maxLen: number): string {
 	return value.replace(/\s+/g, ' ').trim().slice(0, maxLen);
 }
 
-function getRelevantHistoryEntries(
-	request: CommentRequest,
-	history: HistoryEntry[],
-): HistoryEntry[] {
-	return history
-		.filter((entry) => similarity(request.postText, entry.postText) >= 0.3)
-		.slice(0, MAX_HISTORY_EXAMPLES);
-}
-
 function formatHistoryExamples(
 	history: HistoryEntry[],
 	maxCharsPerExample: number,
@@ -73,8 +65,6 @@ function formatHistoryExamples(
 		.join('\n');
 }
 
-const BUILTIN_TONES = ['professional', 'witty', 'supportive'];
-
 function getTargetTones(
 	requestTone: string,
 	customTones: CustomTone[] = [],
@@ -89,7 +79,7 @@ function getTargetTones(
 		};
 	}
 	return {
-		names: BUILTIN_TONES,
+		names: [...BUILTIN_TONES],
 		instruction:
 			'Use each tone exactly once, spelled exactly as: "professional", "witty", "supportive".',
 	};
@@ -198,7 +188,7 @@ export function buildCommentPrompt(
 		request.authorName ?
 			sanitizeField(request.authorName, MAX_AUTHOR_CHARS)
 		:	'';
-	const relevantHistory = getRelevantHistoryEntries(request, history);
+	const relevantHistory = relevantHistoryEntries(request, history).slice(0, MAX_HISTORY_EXAMPLES);
 	const historyExamples = formatHistoryExamples(
 		relevantHistory,
 		MAX_HISTORY_SNIPPET_CHARS,

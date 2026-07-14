@@ -9,23 +9,13 @@ const rootDir = path.resolve(__dirname, '..');
 const iconsDir = path.join(rootDir, 'public', 'icons');
 const sourceIconPath = path.join(iconsDir, 'icon-source.png');
 
-// Fallback to the generated AI artifact if icon-source.png doesn't exist yet
-const aiArtifactPath = 'C:\\\\Users\\\\ronis\\\\.gemini\\\\antigravity-ide\\\\brain\\\\011f2cc2-ebc6-4e50-bf17-3a68a191d13e\\\\linkedin_comment_icon_1783336976851.png';
-
 async function generateIcons() {
   if (!fs.existsSync(iconsDir)) {
     fs.mkdirSync(iconsDir, { recursive: true });
   }
 
-  // Ensure we have a persistent source image in public/icons/
-  if (!fs.existsSync(sourceIconPath) && fs.existsSync(aiArtifactPath)) {
-    fs.copyFileSync(aiArtifactPath, sourceIconPath);
-    console.log('Copied AI icon to public/icons/icon-source.png');
-  }
-
-  const inputPath = fs.existsSync(sourceIconPath) ? sourceIconPath : aiArtifactPath;
-  if (!fs.existsSync(inputPath)) {
-    throw new Error(`Source icon not found at ${inputPath}`);
+  if (!fs.existsSync(sourceIconPath)) {
+    throw new Error(`Source icon not found at ${sourceIconPath}. Place a square PNG at public/icons/icon-source.png`);
   }
 
   const metadata = await sharp(inputPath).metadata();

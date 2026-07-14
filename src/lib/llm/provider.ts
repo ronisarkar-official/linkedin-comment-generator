@@ -14,6 +14,13 @@ export async function generateComments(
 	settings: UserSettings,
 	history: HistoryEntry[] = [],
 ): Promise<CommentVariant[]> {
+	if (!navigator.onLine) {
+		throw new LlmProviderError(
+			'OFFLINE',
+			'You appear to be offline. Check your internet connection and try again.',
+		);
+	}
+
 	const apiKey = settings.apiKeys[settings.provider] ?? '';
 
 	if (!apiKey.trim()) {

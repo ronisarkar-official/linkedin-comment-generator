@@ -49,7 +49,6 @@ const QUALITY_CONTROLS = [
 export default function App() {
 	const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 	const [loading, setLoading] = useState(true);
-	const [saving, setSaving] = useState(false);
 	const [status, setStatus] = useState('');
 	const [activeTab, setActiveTab] = useState<'settings' | 'history'>('settings');
 
@@ -74,69 +73,60 @@ export default function App() {
 		setSettings(next);
 	};
 
+	const persist = (patch: Partial<UserSettings>) => {
+		setSettings((current) => {
+			const next = { ...current, ...patch };
+			saveSettings(next).catch(() => setStatus('Could not save settings.'));
+			return next;
+		});
+	};
+
 	const updateTone = (defaultTone: string) => {
-		setSettings((current) => ({ ...current, defaultTone }));
 		setStatus('');
+		persist({ defaultTone });
 	};
 
 	const updateCustomTones = (customTones: CustomTone[]) => {
-		setSettings((current) => ({ ...current, customTones }));
 		setStatus('');
+		persist({ customTones });
 	};
 
 	const updateStyleExamples = (styleExamples: string[]) => {
-		setSettings((current) => ({ ...current, styleExamples }));
 		setStatus('');
+		persist({ styleExamples });
 	};
 
 	const updateProvider = (provider: LlmProvider) => {
-		const providerConfig = getProvider(provider);
-		const defaultModel = providerConfig.models[0].id;
-		setSettings((current) => ({
-			...current,
-			provider,
-			model: defaultModel,
-		}));
 		setStatus('');
+		const providerConfig = getProvider(provider);
+		persist({ provider, model: providerConfig.models[0].id });
 	};
 
 	const updateModel = (model: string) => {
-		setSettings((current) => ({ ...current, model }));
 		setStatus('');
+		persist({ model });
 	};
 
 	const updateLength = (commentLength: CommentLength) => {
-		setSettings((current) => ({ ...current, commentLength }));
 		setStatus('');
+		persist({ commentLength });
 	};
 
 	const updateProfileSummary = (profileSummary: string) => {
-		setSettings((current) => ({ ...current, profileSummary }));
 		setStatus('');
+		persist({ profileSummary });
 	};
 
 	const updatePromptPreference = (key: keyof PromptPreferences, value: boolean) => {
-		setSettings((current) => ({
-			...current,
-			promptPreferences: {
-				...current.promptPreferences,
-				[key]: value,
-			},
-		}));
 		setStatus('');
-	};
-
-	const savePreferences = async () => {
-		setSaving(true);
-		setStatus('');
-		try {
-			await saveSettings(settings);
-			setStatus('Preferences saved.');
-		} catch {
-			setStatus('Could not save preferences.');
-		} finally {
-			setSaving(false);
-		}
+		setSettings((current) => {
+			const next = {
+				...current,
+				promptPreferences: { ...current.promptPreferences, [key]: value },
+			};
+			saveSettings(next).catch(() => setStatus('Could not save settings.'));
+			return next;
+		});
 	};
 
 	return (
@@ -290,21 +280,6 @@ export default function App() {
 								</CardContent>
 							</Card>
 						</div>
-
-						<Button
-							onClick={savePreferences}
-							disabled={saving}
-							className="w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-transform active:scale-[0.96]"
-						>
-							{saving ? (
-								<>
-									<Loader2 className="mr-2 h-3 w-3 animate-spin" />
-									Saving…
-								</>
-							) : (
-								'Save preferences'
-							)}
-						</Button>
 
 						<p className="min-h-4 text-center text-xs text-muted-foreground" role="status">
 							{status}

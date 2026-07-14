@@ -164,8 +164,8 @@ chrome.runtime.onMessage.addListener(
 			sendResponse({
 				ok: false,
 				error: {
-					code: 'INVALID_RESPONSE',
-					message: 'The comment request was invalid.',
+			code: 'INVALID_REQUEST',
+			message: 'The comment request was invalid.',
 				},
 			} satisfies GenerateCommentsFailure);
 			// Return true so Chrome knows we called sendResponse asynchronously

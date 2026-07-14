@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import type { CustomTone } from '../../lib/types';
+import type { CustomTone, Tone } from '../../lib/types';
+import { BUILTIN_TONES } from '../../lib/types';
+import { MAX_CUSTOM_TONES } from '../../lib/storage';
 import { Button } from '@/components/ui/button';
-
-const MAX_CUSTOM_TONES = 10;
-const BUILTIN_TONES = ['professional', 'witty', 'supportive'];
 
 interface CustomTonesProps {
 	customTones: CustomTone[];
@@ -23,7 +22,7 @@ export default function CustomTones({ customTones, onChange }: CustomTonesProps)
 			setError('Please enter both a name and instructions.');
 			return;
 		}
-		if (BUILTIN_TONES.includes(label.trim().toLowerCase())) {
+		if ((BUILTIN_TONES as readonly string[]).includes(label.trim().toLowerCase())) {
 			setError(`"${label.trim()}" is a built-in tone. Choose a different name.`);
 			return;
 		}

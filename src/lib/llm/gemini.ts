@@ -126,11 +126,10 @@ export async function generateWithGemini(
 					parseRetryAfter(response),
 				);
 			}
-			if (
-				response.status === 400 ||
-				response.status === 401 ||
-				response.status === 403
-			) {
+			if (response.status === 400) {
+				throw new LlmProviderError('INVALID_REQUEST', message);
+			}
+			if (response.status === 401 || response.status === 403) {
 				throw new LlmProviderError('INVALID_API_KEY', message);
 			}
 			throw new LlmProviderError('PROVIDER_ERROR', message);

@@ -1,7 +1,6 @@
 import { useState } from 'react';
+import { MAX_STYLE_EXAMPLES } from '../../lib/storage';
 import { Button } from '@/components/ui/button';
-
-const MAX_STYLE_EXAMPLES = 5;
 
 interface StyleExamplesProps {
 	styleExamples: string[];
