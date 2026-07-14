@@ -21,6 +21,8 @@
   body {
     min-width: 360px;
     @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   button,

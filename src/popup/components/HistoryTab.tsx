@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { clearHistory, deleteHistoryEntry, getHistory } from '../../lib/storage';
 import type { HistoryEntry } from '../../lib/types';
+import { Button } from '@/components/ui/button';
 
 type InsertHistoryCommentResponse =
 	| { ok: true }
@@ -107,15 +108,17 @@ export default function HistoryTab() {
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between pb-1">
-				<span className="text-xs font-semibold text-muted-foreground">
+				<span className="text-xs font-semibold text-muted-foreground tabular-nums">
 					{history.length} {history.length === 1 ? 'generation' : 'generations'} saved
 				</span>
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="xs"
 					onClick={handleClearAll}
 					className="text-xs font-semibold text-destructive hover:text-destructive/80">
 					Clear All
-				</button>
+				</Button>
 			</div>
 
 			<div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
@@ -146,11 +149,11 @@ export default function HistoryTab() {
 									</p>
 								</div>
 								<div className="flex items-center gap-2 shrink-0">
-									<span className="text-[10px] text-muted-foreground">{dateStr}</span>
+									<span className="text-[10px] text-muted-foreground tabular-nums">{dateStr}</span>
 									<button
 										type="button"
 										onClick={() => handleDelete(entry.id)}
-										className="text-muted-foreground hover:text-destructive font-bold"
+										className="text-muted-foreground hover:text-destructive font-bold transition-[color]"
 										title="Delete entry">
 										×
 									</button>
@@ -164,9 +167,9 @@ export default function HistoryTab() {
 										type="button"
 										onClick={() => handleInsert(v.text)}
 										disabled={insertingText === v.text}
-										className="group relative block w-full rounded-lg bg-muted p-2 text-left text-xs text-foreground transition hover:bg-accent disabled:cursor-wait disabled:opacity-70">
+										className="group relative block w-full rounded-lg bg-muted p-2 text-left text-xs text-foreground transition-[background-color] hover:bg-accent disabled:cursor-wait disabled:opacity-70 active:scale-[0.99]">
 										<p className="pr-12">{v.text}</p>
-										<span className="absolute right-2 top-2 rounded bg-card px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm border border-border opacity-80 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition">
+										<span className="absolute right-2 top-2 rounded bg-card px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm border border-border opacity-80 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition-[opacity,background-color,color]">
 											{insertingText === v.text ? 'Inserting…' : 'Insert'}
 										</span>
 									</button>

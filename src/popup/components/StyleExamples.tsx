@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 const MAX_STYLE_EXAMPLES = 5;
 
@@ -69,25 +70,28 @@ export default function StyleExamples({ styleExamples, onChange }: StyleExamples
 						onChange={(e) => setExample(e.target.value)}
 						rows={3}
 						maxLength={500}
-						className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+						className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground outline-none transition-[border] focus:border-primary"
 					/>
 					{error && <p className="text-[11px] text-destructive">{error}</p>}
 					<div className="flex justify-end gap-2 pt-1">
-						<button
+						<Button
 							type="button"
+							variant="ghost"
+							size="sm"
 							onClick={() => {
 								setIsAdding(false);
 								setError('');
-							}}
-							className="rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+							}}>
 							Cancel
-						</button>
-						<button
+						</Button>
+						<Button
 							type="button"
+							variant="default"
+							size="sm"
 							onClick={handleAdd}
-							className="rounded bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+							className="transition-transform active:scale-[0.96]">
 							Save Example
-						</button>
+						</Button>
 					</div>
 				</div>
 			)}

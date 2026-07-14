@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CustomTone } from '../../lib/types';
+import { Button } from '@/components/ui/button';
 
 const MAX_CUSTOM_TONES = 10;
 const BUILTIN_TONES = ['professional', 'witty', 'supportive'];
@@ -63,7 +64,7 @@ export default function CustomTones({ customTones, onChange }: CustomTonesProps)
 					<button
 						type="button"
 						onClick={() => setIsAdding(true)}
-						className="text-xs font-semibold text-primary hover:text-primary/80">
+						className="text-xs font-semibold text-primary hover:text-primary/80 transition-[color]">
 						+ Add Tone
 					</button>
 				)}
@@ -93,21 +94,24 @@ export default function CustomTones({ customTones, onChange }: CustomTonesProps)
 					</div>
 					{error && <p className="text-[11px] text-destructive">{error}</p>}
 					<div className="flex justify-end gap-2 pt-1">
-						<button
+						<Button
 							type="button"
+							variant="ghost"
+							size="sm"
 							onClick={() => {
 								setIsAdding(false);
 								setError('');
-							}}
-							className="rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+							}}>
 							Cancel
-						</button>
-						<button
+						</Button>
+						<Button
 							type="button"
+							variant="default"
+							size="sm"
 							onClick={handleAdd}
-							className="rounded bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+							className="transition-transform active:scale-[0.96]">
 							Save Tone
-						</button>
+						</Button>
 					</div>
 				</div>
 			)}

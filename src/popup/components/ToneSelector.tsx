@@ -20,17 +20,17 @@ export default function ToneSelector({
 
 	return (
 		<fieldset className="space-y-2">
-			<legend className="text-sm font-semibold text-slate-800">
+			<legend className="text-sm font-semibold text-foreground">
 				Preferred tone
 			</legend>
-			<div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+			<div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
 				{options.map((option) => (
 					<label
 						key={option.value}
-						className={`cursor-pointer rounded-lg px-2 py-2 text-center text-xs font-semibold transition truncate ${
+						className={`cursor-pointer rounded-lg px-2 py-2 text-center text-xs font-semibold transition-[background-color,box-shadow,color] truncate active:scale-[0.96] ${
 							value === option.value ?
-								'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-							:	'text-slate-600 hover:text-slate-900'
+								'bg-background text-primary shadow-sm ring-1 ring-border'
+							:	'text-muted-foreground hover:text-foreground'
 						}`}
 						title={option.label}>
 						<input

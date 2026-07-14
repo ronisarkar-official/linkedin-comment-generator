@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface ApiKeyInputProps {
 	value: string;
@@ -68,7 +69,7 @@ export default function ApiKeyInput({
 					Local only
 				</span>
 			</div>
-			<div className="flex gap-2">
+				<div className="flex gap-2">
 				<div className="relative min-w-0 flex-1">
 					<input
 						id="api-key"
@@ -82,22 +83,23 @@ export default function ApiKeyInput({
 						autoComplete="off"
 						spellCheck={false}
 						maxLength={256}
-						className="h-9 w-full rounded-md border border-input bg-background px-3 pr-14 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
+						className="h-9 w-full rounded-md border border-input bg-background px-3 pr-14 text-sm text-foreground outline-none transition-[border,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
 					/>
 					<button
 						type="button"
 						onClick={() => setVisible((current) => !current)}
-						className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
+						className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-[background-color,color]">
 						{visible ? 'Hide' : 'Show'}
 					</button>
 				</div>
-				<button
+				<Button
 					type="button"
 					onClick={handleSave}
 					disabled={saving}
-					className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
+					variant="default"
+					className="h-9 px-4 text-sm font-semibold transition-transform active:scale-[0.96] disabled:cursor-wait">
 					{saving ? 'Saving…' : 'Save'}
-				</button>
+				</Button>
 			</div>
 			<p
 				className={`min-h-4 text-xs ${isError ? 'text-destructive' : 'text-muted-foreground'}`}

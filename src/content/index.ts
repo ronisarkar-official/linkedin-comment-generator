@@ -56,7 +56,7 @@ style.textContent = `
   .lcg-refine-btn:hover { background: #004182; }
   .lcg-refine-btn:disabled { opacity: 0.6; cursor: wait; }
   .lcg-pills-row { display: flex; flex-wrap: wrap; gap: 4px; }
-  .lcg-pill { background: #f3f2ef; border: 1px solid #e0dfdc; border-radius: 999px; color: #5f5f5f; cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 8px; transition: all 0.15s; }
+  .lcg-pill { background: #f3f2ef; border: 1px solid #e0dfdc; border-radius: 999px; color: #5f5f5f; cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 8px; transition-property: background-color, color; transition-duration: 0.15s; }
   .lcg-pill:hover { background: #e0dfdc; color: #191919; }
   .lcg-pill:disabled { opacity: 0.5; cursor: wait; }
   .lcg-variant-text { display: block; }
@@ -67,8 +67,41 @@ style.textContent = `
   .lcg-floating-launcher { align-items: center; background: #0a66c2; border: 0; border-radius: 999px; bottom: 84px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); color: #fff; cursor: pointer; display: flex; font: 700 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; gap: 7px; padding: 13px 17px; position: fixed; right: 24px; z-index: 2147483639; }
   .lcg-floating-launcher:hover { background: #004182; }
   @keyframes lcg-spin { to { transform: rotate(360deg); } }
+  @media (prefers-color-scheme: dark) {
+    .lcg-generate-button { color: #70b5f9; }
+    .lcg-generate-button:hover { background: rgba(112, 181, 249, 0.15); }
+    .lcg-fallback-action-bar { border-top-color: rgba(255, 255, 255, 0.12); }
+    .lcg-spinner { border-color: rgba(112, 181, 249, 0.25); border-top-color: #70b5f9; }
+    .lcg-spinner-dark { border-color: rgba(180, 180, 180, 0.25); border-top-color: #b4b4b4; }
+    .lcg-variant-panel { background: #1d2226; border-color: #38434f; color: #e0e0e0; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
+    .lcg-panel-header strong { color: #e0e0e0; }
+    .lcg-close-button { background: rgba(255,255,255,0.06); color: #999; }
+    .lcg-close-button:hover { background: rgba(255,255,255,0.12); color: #e0e0e0; }
+    .lcg-close-button:active { background: rgba(255,255,255,0.18); }
+    .lcg-variant-card { background: #283340; border-color: #38434f; color: #e0e0e0; }
+    .lcg-variant-card:hover { background: #1d3a5c; border-color: #70b5f9; }
+    .lcg-tone-professional { background: #1e3a5f; color: #93c5fd; }
+    .lcg-tone-witty { background: #5c4a1e; color: #fde68a; }
+    .lcg-tone-supportive { background: #1a4731; color: #86efac; }
+    .lcg-tone-custom { background: #3b2163; color: #d8b4fe; }
+    .lcg-refine-bar { border-bottom-color: #38434f; }
+    .lcg-refine-input { background: #283340; border-color: #38434f; color: #e0e0e0; }
+    .lcg-refine-input:focus { border-color: #70b5f9; box-shadow: 0 0 0 1px #70b5f9; }
+    .lcg-refine-btn { background: #70b5f9; color: #1d2226; }
+    .lcg-refine-btn:hover { background: #90caf9; }
+    .lcg-pill { background: #283340; border-color: #38434f; color: #999; }
+    .lcg-pill:hover { background: #38434f; color: #e0e0e0; }
+    .lcg-panel-status { color: #999; }
+    .lcg-panel-status-error { color: #f87171; }
+    .lcg-toast { background: #1d2226; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); }
+    .lcg-toast-error { border-left-color: #f87171; color: #fca5a5; }
+    .lcg-floating-launcher { background: #70b5f9; color: #1d2226; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); }
+    .lcg-floating-launcher:hover { background: #90caf9; }
+  }
 `
 document.documentElement.append(style)
+
+
 
 let detectedPostCount = 0
 let fallbackLauncher: HTMLButtonElement | null = null

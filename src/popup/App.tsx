@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Heart } from 'lucide-react';
+import { History, Loader2, Heart, Settings } from 'lucide-react';
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../lib/storage';
 import type {
 	CommentLength,
@@ -141,21 +141,18 @@ export default function App() {
 
 	return (
 		<main className="w-[360px] min-h-[500px] bg-background text-foreground">
-			<header className="bg-primary px-5 py-4 text-primary-foreground">
-				<div className="flex items-center gap-3">
+			<header className="bg-primary px-4 py-3 text-primary-foreground">
+				<div className="flex items-start gap-2.5">
 					<img
 						src="/icons/icon48.png"
 						alt=""
-						className="h-10 w-10 rounded-xl shadow-sm ring-1 ring-primary-foreground/20"
+						className="mt-0.5 h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1 ring-primary-foreground/20 outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
 					/>
 					<div className="min-w-0 flex-1">
-						<h1 className="truncate text-base font-bold leading-tight">
-							LinkedIn Comment Generator
-						</h1>
-						<div className="mt-1 flex items-center justify-between gap-2">
-							<span className="text-[11px] font-medium text-primary-foreground/70 truncate">
-								{currentProvider.label} / {getModelLabel(settings.provider, settings.model)}
-							</span>
+						<div className="flex items-center justify-between gap-2">
+							<h1 className="truncate text-sm font-bold leading-tight text-balance">
+								LinkedIn Comment Generator
+							</h1>
 							<Button
 								render={(props) => (
 									<a
@@ -165,13 +162,16 @@ export default function App() {
 										rel="noopener noreferrer"
 									/>
 								)}
-								size="sm"
-								className="h-6 gap-1 rounded-full bg-destructive/90 px-2.5 text-[10px] font-bold text-destructive-foreground hover:bg-destructive"
+								size="xs"
+								className="shrink-0 gap-1 rounded-full bg-primary-foreground/15 px-2 text-[10px] font-bold text-primary-foreground hover:bg-primary-foreground/25 transition-transform active:scale-[0.96]"
 							>
 								<Heart className="h-3 w-3 fill-current" />
 								Sponsor
 							</Button>
 						</div>
+						<span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary-foreground/10 px-2 py-0.5 text-[10px] font-medium text-primary-foreground/75 truncate tabular-nums">
+							{currentProvider.label} / {getModelLabel(settings.provider, settings.model)}
+						</span>
 					</div>
 				</div>
 			</header>
@@ -183,18 +183,20 @@ export default function App() {
 				</div>
 			) : (
 				<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')}>
-					<TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border bg-card p-0">
+					<TabsList className="flex w-full border-b border-border bg-transparent gap-0 p-0 h-auto">
 						<TabsTrigger
 							value="settings"
-							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+							className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
 						>
-							⚙️ Settings
+							<Settings className="h-3.5 w-3.5" />
+							Settings
 						</TabsTrigger>
 						<TabsTrigger
 							value="history"
-							className="rounded-none border-b-2 border-transparent py-2.5 text-xs font-bold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+							className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
 						>
-							📜 History
+							<History className="h-3.5 w-3.5" />
+							History
 						</TabsTrigger>
 					</TabsList>
 
@@ -207,7 +209,7 @@ export default function App() {
 									id="provider-select"
 									value={settings.provider}
 									onChange={(e) => updateProvider(e.target.value as LlmProvider)}
-									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
+									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
 								>
 									{PROVIDERS.map((p) => (
 										<option key={p.id} value={p.id}>
@@ -219,7 +221,7 @@ export default function App() {
 									id="model-select"
 									value={settings.model}
 									onChange={(e) => updateModel(e.target.value)}
-									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
+									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
 								>
 									{currentProvider.models.map((m) => (
 										<option key={m.id} value={m.id}>
@@ -249,7 +251,7 @@ export default function App() {
 								<Label htmlFor="profile-summary" className="text-sm font-semibold text-foreground">
 									Your profile / interests
 								</Label>
-								<span className="text-[10px] font-medium text-muted-foreground">
+								<span className="text-[10px] font-medium text-muted-foreground text-pretty">
 									Helps the comment sound more like you
 								</span>
 							</div>
@@ -292,7 +294,7 @@ export default function App() {
 						<Button
 							onClick={savePreferences}
 							disabled={saving}
-							className="w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+							className="w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-transform active:scale-[0.96]"
 						>
 							{saving ? (
 								<>

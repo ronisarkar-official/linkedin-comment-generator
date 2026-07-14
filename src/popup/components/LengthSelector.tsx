@@ -14,15 +14,15 @@ const options: Array<{ value: CommentLength; label: string; detail: string }> = 
 export default function LengthSelector({ value, onChange }: LengthSelectorProps) {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-slate-800">Comment length</legend>
+      <legend className="text-sm font-semibold text-foreground">Comment length</legend>
       <div className="grid grid-cols-3 gap-2">
         {options.map((option) => (
           <label
             key={option.value}
-            className={`cursor-pointer rounded-lg border px-2 py-2 text-center transition ${
+            className={`cursor-pointer rounded-lg border px-2 py-2 text-center transition-[border-color,background-color,color] active:scale-[0.96] ${
               value === option.value
-                ? "border-blue-600 bg-blue-50 text-blue-800"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:border-foreground/20"
             }`}
           >
             <input
