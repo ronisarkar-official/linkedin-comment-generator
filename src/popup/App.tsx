@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { History, Loader2, Heart, Settings } from 'lucide-react';
+import { ChevronDown, ExternalLink, History, Loader2, Heart, Settings } from 'lucide-react';
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../lib/storage';
 import type {
 	CommentLength,
@@ -17,6 +17,13 @@ import StyleExamples from './components/StyleExamples';
 import ToneSelector from './components/ToneSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -46,12 +53,25 @@ const QUALITY_CONTROLS = [
 	},
 ];
 
+const API_KEY_URLS: Record<string, string> = {
+	gemini: 'https://aistudio.google.com/apikey',
+	openai: 'https://platform.openai.com/api-keys',
+	anthropic: 'https://console.anthropic.com/settings/keys',
+	openrouter: 'https://openrouter.ai/keys',
+	groq: 'https://console.groq.com/keys',
+	together: 'https://api.together.ai/settings/api-keys',
+	mistral: 'https://console.mistral.ai/api-keys',
+	deepseek: 'https://platform.deepseek.com/api_keys',
+	cohere: 'https://dashboard.cohere.com/api-keys',
+	perplexity: 'https://www.perplexity.ai/settings/api',
+	xai: 'https://console.x.ai',
+};
+
 export default function App() {
 	const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 	const [loading, setLoading] = useState(true);
 	const [status, setStatus] = useState('');
 	const [activeTab, setActiveTab] = useState<'settings' | 'history'>('settings');
-
 	useEffect(() => {
 		void getSettings()
 			.then(setSettings)
@@ -136,28 +156,47 @@ export default function App() {
 					<img
 						src="/icons/icon48.png"
 						alt=""
-						className="mt-0.5 h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1 ring-primary-foreground/20 outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+						className="mt-0.5 h-9 w-9 shrink-0 rounded-xl shadow-sm ring-1 ring-primary-foreground/20 outline outline-1 -outline-offset-1 outline-black/10"
 					/>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
 							<h1 className="truncate text-sm font-bold leading-tight text-balance">
 								LinkedIn Comment Generator
 							</h1>
-							<Button
-								render={(props) => (
-									<a
-										{...props}
-										href="https://github.com/sponsors/ronisarkar-official"
-										target="_blank"
-										rel="noopener noreferrer"
-									/>
-								)}
-								size="xs"
-								className="shrink-0 gap-1 rounded-full bg-primary-foreground/15 px-2 text-[10px] font-bold text-primary-foreground hover:bg-primary-foreground/25 transition-transform active:scale-[0.96]"
-							>
-								<Heart className="h-3 w-3 fill-current" />
-								Sponsor
-							</Button>
+							<div className="flex items-center gap-1.5">
+							<Dialog>
+								<DialogTrigger
+									render={
+										<Button
+											size="xs"
+											className="shrink-0 gap-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-2.5 text-[10px] font-bold text-white shadow-sm shadow-pink-500/30 hover:from-pink-600 hover:to-rose-600 transition-all active:scale-[0.96] animate-pulse"
+										/>
+									}
+								>
+									<Heart className="h-3 w-3 fill-current" />
+									Donate
+								</DialogTrigger>
+								<DialogContent className="max-w-[300px] p-5">
+									<DialogHeader>
+										<DialogTitle className="text-center text-base font-bold">
+											Support via UPI
+										</DialogTitle>
+									</DialogHeader>
+									<div className="flex flex-col items-center gap-3">
+										<div className="overflow-hidden rounded-xl border border-border bg-white p-2">
+											<img
+												src="/icons/Roni-upi-qr-code.png"
+												alt="UPI QR Code"
+												className="h-48 w-48 object-contain"
+											/>
+										</div>
+										<p className="text-center text-xs text-muted-foreground">
+											Scan this QR code with any UPI app to donate
+										</p>
+									</div>
+								</DialogContent>
+							</Dialog>
+							</div>
 						</div>
 						<span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary-foreground/10 px-2 py-0.5 text-[10px] font-medium text-primary-foreground/75 truncate tabular-nums">
 							{currentProvider.label} / {getModelLabel(settings.provider, settings.model)}
@@ -195,31 +234,48 @@ export default function App() {
 						<div className="space-y-2">
 							<Label className="text-sm font-semibold text-foreground">AI provider &amp; model</Label>
 							<div className="grid grid-cols-2 gap-2">
-								<select
-									id="provider-select"
-									value={settings.provider}
-									onChange={(e) => updateProvider(e.target.value as LlmProvider)}
-									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
-								>
-									{PROVIDERS.map((p) => (
-										<option key={p.id} value={p.id}>
-											{p.label}
-										</option>
-									))}
-								</select>
-								<select
-									id="model-select"
-									value={settings.model}
-									onChange={(e) => updateModel(e.target.value)}
-									className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
-								>
-									{currentProvider.models.map((m) => (
-										<option key={m.id} value={m.id}>
-											{m.label}
-										</option>
-									))}
-								</select>
+								<div className="relative">
+									<select
+										id="provider-select"
+										value={settings.provider}
+										onChange={(e) => updateProvider(e.target.value as LlmProvider)}
+										className="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background pl-3 pr-7 text-xs font-medium text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-foreground/30 focus:border-primary focus:ring-2 focus:ring-ring/20"
+									>
+										{PROVIDERS.map((p) => (
+											<option key={p.id} value={p.id}>
+												{p.label}{(p.id === 'gemini' || p.id === 'openrouter') ? ' (Free)' : ''}
+											</option>
+										))}
+									</select>
+									<ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+								</div>
+								<div className="relative">
+									<select
+										id="model-select"
+										value={settings.model}
+										onChange={(e) => updateModel(e.target.value)}
+										className="h-9 w-full cursor-pointer appearance-none rounded-md border border-input bg-background pl-3 pr-7 text-xs font-medium text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-foreground/30 focus:border-primary focus:ring-2 focus:ring-ring/20"
+									>
+										{currentProvider.models.map((m) => (
+											<option key={m.id} value={m.id}>
+												{m.label}
+											</option>
+										))}
+									</select>
+									<ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+								</div>
 							</div>
+							{API_KEY_URLS[settings.provider] && (
+								<a
+									href={API_KEY_URLS[settings.provider]}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline transition-colors"
+								>
+									<ExternalLink className="h-3 w-3" />
+									Get {currentProvider.label} API key
+								</a>
+							)}
 						</div>
 
 						<ApiKeyInput
