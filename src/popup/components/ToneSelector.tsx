@@ -1,4 +1,4 @@
-import type { CustomTone } from '../../lib/types';
+import { BUILTIN_TONES, type CustomTone } from '../../lib/types';
 
 interface ToneSelectorProps {
 	value: string;
@@ -6,33 +6,35 @@ interface ToneSelectorProps {
 	onChange: (tone: string) => void;
 }
 
+const BUILTIN_OPTIONS = BUILTIN_TONES.map((value) => ({
+	value,
+	label: value.charAt(0).toUpperCase() + value.slice(1),
+}));
+
 export default function ToneSelector({
 	value,
 	customTones = [],
 	onChange,
 }: ToneSelectorProps) {
 	const options = [
-		{ value: 'professional', label: 'Professional' },
-		{ value: 'witty', label: 'Witty' },
-		{ value: 'supportive', label: 'Supportive' },
+		...BUILTIN_OPTIONS,
 		...customTones.map((ct) => ({ value: ct.id, label: ct.label })),
 	];
 
 	return (
 		<fieldset className="space-y-2">
-			<legend className="text-sm font-semibold text-foreground">
-				Preferred tone
-			</legend>
-			<div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+			<legend className="text-sm font-semibold text-foreground">Preferred tone</legend>
+			<div className="grid grid-cols-3 gap-2">
 				{options.map((option) => (
 					<label
 						key={option.value}
-						className={`cursor-pointer rounded-lg px-2 py-2 text-center text-xs font-semibold transition-[background-color,box-shadow,color] truncate active:scale-[0.96] ${
-							value === option.value ?
-								'bg-background text-primary shadow-sm ring-1 ring-border'
-							:	'text-muted-foreground hover:text-foreground'
+						className={`cursor-pointer rounded-lg border px-2 py-2 text-center text-xs font-semibold transition-[border-color,background-color,color] active:scale-[0.96] ${
+							value === option.value
+								? 'border-primary bg-primary/10 text-primary'
+								: 'border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
 						}`}
-						title={option.label}>
+						title={option.label}
+					>
 						<input
 							type="radio"
 							name="tone"

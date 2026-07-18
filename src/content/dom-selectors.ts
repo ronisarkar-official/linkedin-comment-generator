@@ -1,3 +1,5 @@
+import { logger } from '../lib/logger';
+
 export const FEED_CONTAINER_SELECTORS = [
   '[data-testid="mainFeed"]',
   '[data-view-name="main-feed"]',
@@ -93,7 +95,7 @@ function queryFirst<T extends Element>(root: ParentNode, selectors: string[]): T
       const element = root.querySelector<T>(selector)
       if (element) return element
     } catch (error) {
-      console.debug("LinkedIn Comment Generator skipped an invalid selector.", selector, error)
+      logger.debug("Skipped an invalid selector.", { selector, error: String(error) })
     }
   }
   return null
@@ -110,7 +112,7 @@ export function findPosts(root: ParentNode = document): HTMLElement[] {
     try {
       root.querySelectorAll<HTMLElement>(selector).forEach((post) => posts.add(post))
     } catch (error) {
-      console.debug("LinkedIn Comment Generator could not query posts.", selector, error)
+      logger.debug("Could not query posts.", { selector, error: String(error) })
     }
   }
 
@@ -122,7 +124,7 @@ export function findPosts(root: ParentNode = document): HTMLElement[] {
         if (post) posts.add(post)
       })
     } catch (error) {
-      console.debug("LinkedIn Comment Generator could not locate posts by controls.", selector, error)
+      logger.debug("Could not locate posts by controls.", { selector, error: String(error) })
     }
   }
 
@@ -162,7 +164,7 @@ export function findPosts(root: ParentNode = document): HTMLElement[] {
       }
     })
   } catch (error) {
-    console.debug("LinkedIn Comment Generator could not locate posts semantically.", error)
+    logger.debug("Could not locate posts semantically.", { error: String(error) })
   }
 
   const matched = [...posts].filter((post) => Boolean(findPostText(post)))
@@ -241,7 +243,7 @@ export function findCommentInput(post: HTMLElement): HTMLElement | null {
       try {
         root.querySelectorAll<HTMLElement>(selector).forEach((input) => inputs.add(input))
       } catch (error) {
-        console.debug("LinkedIn Comment Generator could not query comment inputs.", selector, error)
+        logger.debug("Could not query comment inputs.", { selector, error: String(error) })
       }
     }
     return [...inputs]
@@ -277,7 +279,7 @@ export function findCommentTrigger(post: HTMLElement): HTMLButtonElement | null 
       )
       if (trigger) return trigger
     } catch (error) {
-      console.debug("LinkedIn Comment Generator could not query comment triggers.", selector, error)
+      logger.debug("Could not query comment triggers.", { selector, error: String(error) })
     }
   }
   return null
@@ -337,7 +339,7 @@ export function observeLinkedInFeed(onPostsFound: (posts: HTMLElement[]) => void
       const posts = findPosts(scope)
       if (posts.length > 0) onPostsFound(posts)
     } catch (error) {
-      console.debug("LinkedIn Comment Generator could not scan the feed.", error)
+      logger.debug("Could not scan the feed.", { error: String(error) })
     }
   }
 

@@ -118,29 +118,18 @@ function getPreferenceInstructions(
 		);
 	}
 
-	if (settings.promptPreferences.avoidBuzzwords) {
-		instructions.push(
-			`Avoid buzzwords such as ${GENERIC_BANNED_PHRASES.slice(0, 4).join(', ')} and other corporate filler.`,
-		);
-	}
-
-	if (settings.promptPreferences.avoidCliches) {
-		instructions.push(
-			`Avoid cliché openers such as ${GENERIC_BANNED_OPENERS.map((item) => `'${item}'`).join(', ')}.`,
-		);
-	}
-
-	if (settings.promptPreferences.avoidAIGenerated) {
-		instructions.push(
-			'Do not sound AI-generated: avoid symmetrical phrasing, over-explaining, formal transitions, and overly neat sentence patterns.',
-		);
-	}
-
-	if (settings.promptPreferences.preferFreshAngles) {
-		instructions.push(
-			'Prefer a fresh angle, a different sentence shape, and a new opening whenever the same topic has appeared recently.',
-		);
-	}
+	instructions.push(
+		`Avoid buzzwords such as ${GENERIC_BANNED_PHRASES.slice(0, 4).join(', ')} and other corporate filler.`,
+	);
+	instructions.push(
+		`Avoid cliché openers such as ${GENERIC_BANNED_OPENERS.map((item) => `'${item}'`).join(', ')}.`,
+	);
+	instructions.push(
+		'Do not sound AI-generated: avoid symmetrical phrasing, over-explaining, formal transitions, and overly neat sentence patterns.',
+	);
+	instructions.push(
+		'Prefer a fresh angle, a different sentence shape, and a new opening whenever the same topic has appeared recently.',
+	);
 
 	return instructions;
 }

@@ -4,7 +4,7 @@ import type { CustomTone, HistoryEntry, LlmProvider, ProviderApiKeys, UserSettin
 const SETTINGS_KEY = 'settings';
 const HISTORY_KEY = 'history';
 export const MAX_HISTORY_ENTRIES = 50;
-export const MAX_CUSTOM_TONES = 10;
+export const MAX_CUSTOM_TONES = 999;
 export const MAX_STYLE_EXAMPLES = 5;
 
 const VALID_PROVIDERS = new Set<string>([

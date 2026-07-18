@@ -1,3 +1,4 @@
+import { logger } from "../lib/logger"
 import { showContentError, showVariantPicker, insertCommentIntoVisiblePost } from "./comment-box"
 import { findVisiblePost, observeLinkedInFeed } from "./dom-selectors"
 import { injectGenerateButton } from "./inject-button"
@@ -132,7 +133,7 @@ if (window.location.pathname.startsWith("/feed")) {
 
     if (!hasVisibleButton) {
       if (detectedPostCount === 0) {
-        console.warn("[LCG] Did not recognize any posts on this feed.")
+        logger.warn("Did not recognize any posts on this feed.")
       }
       const launcher = document.createElement("button")
       launcher.type = "button"

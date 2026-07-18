@@ -5,18 +5,17 @@ import type {
 	CommentLength,
 	CustomTone,
 	LlmProvider,
-	PromptPreferences,
 	UserSettings,
 } from '../lib/types';
 import { PROVIDERS, getProvider, getModelLabel } from '../lib/llm/registry';
 import ApiKeyInput from './components/ApiKeyInput';
 import CustomTones from './components/CustomTones';
 import HistoryTab from './components/HistoryTab';
+import Footer from './components/Footer';
 import LengthSelector from './components/LengthSelector';
 import StyleExamples from './components/StyleExamples';
 import ToneSelector from './components/ToneSelector';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
 	Dialog,
 	DialogContent,
@@ -26,32 +25,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-
-const QUALITY_CONTROLS = [
-	{
-		key: 'avoidBuzzwords' as const,
-		label: 'Avoid buzzwords',
-		detail: 'Skips corporate filler and vague hype words.',
-	},
-	{
-		key: 'avoidCliches' as const,
-		label: 'Avoid clichés',
-		detail: 'Avoids overused openers and generic praise.',
-	},
-	{
-		key: 'avoidAIGenerated' as const,
-		label: 'Avoid sounding AI-generated',
-		detail: 'Pushes the reply toward a more natural rhythm.',
-	},
-	{
-		key: 'preferFreshAngles' as const,
-		label: 'Prefer fresh angles',
-		detail: 'Helps repeated posts get different comment ideas.',
-	},
-];
 
 const API_KEY_URLS: Record<string, string> = {
 	gemini: 'https://aistudio.google.com/apikey',
@@ -137,21 +112,9 @@ export default function App() {
 		persist({ profileSummary });
 	};
 
-	const updatePromptPreference = (key: keyof PromptPreferences, value: boolean) => {
-		setStatus('');
-		setSettings((current) => {
-			const next = {
-				...current,
-				promptPreferences: { ...current.promptPreferences, [key]: value },
-			};
-			saveSettings(next).catch(() => setStatus('Could not save settings.'));
-			return next;
-		});
-	};
-
 	return (
-		<main className="w-[360px] min-h-[500px] bg-background text-foreground">
-			<header className="bg-primary px-4 py-3 text-primary-foreground">
+		<main className="flex flex-col w-[360px] min-h-[500px] max-h-[600px] bg-background text-foreground">
+			<header className="shrink-0 bg-primary px-4 py-3 text-primary-foreground">
 				<div className="flex items-start gap-2.5">
 					<img
 						src="/icons/icon48.png"
@@ -205,29 +168,30 @@ export default function App() {
 				</div>
 			</header>
 
-			{loading ? (
-				<div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-					<Loader2 className="h-4 w-4 animate-spin" />
-					Loading settings…
-				</div>
-			) : (
-				<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')}>
-					<TabsList className="flex w-full border-b border-border bg-transparent gap-0 p-0 h-auto">
-						<TabsTrigger
-							value="settings"
-							className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
-						>
-							<Settings className="h-3.5 w-3.5" />
-							Settings
-						</TabsTrigger>
-						<TabsTrigger
-							value="history"
-							className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
-						>
-							<History className="h-3.5 w-3.5" />
-							History
-						</TabsTrigger>
-					</TabsList>
+			<div className="flex flex-1 flex-col min-h-0 overflow-y-auto">
+				{loading ? (
+					<div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						Loading settings…
+					</div>
+				) : (
+					<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')}>
+						<TabsList className="flex w-full border-b border-border bg-transparent gap-0 p-0 h-auto shrink-0">
+							<TabsTrigger
+								value="settings"
+								className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
+							>
+								<Settings className="h-3.5 w-3.5" />
+								Settings
+							</TabsTrigger>
+							<TabsTrigger
+								value="history"
+								className="relative flex-1 flex items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-xs font-semibold text-muted-foreground data-active:text-foreground data-active:border-foreground data-active:bg-transparent rounded-none shadow-none transition-[color,border-color] hover:text-foreground"
+							>
+								<History className="h-3.5 w-3.5" />
+								History
+							</TabsTrigger>
+						</TabsList>
 
 					<TabsContent value="settings" className="m-0 space-y-4 p-4">
 						{/* Provider & Model selectors */}
@@ -314,29 +278,6 @@ export default function App() {
 
 						<StyleExamples styleExamples={settings.styleExamples || []} onChange={updateStyleExamples} />
 
-						<div className="space-y-2">
-							<Label className="text-sm font-semibold text-foreground">Prompt quality controls</Label>
-							<Card className="border-border">
-								<CardContent className="space-y-1 p-3">
-									{QUALITY_CONTROLS.map((option) => (
-										<div
-											key={option.key}
-											className="flex items-start justify-between gap-3 rounded-lg px-1 py-1.5 hover:bg-accent"
-										>
-											<div>
-												<p className="text-xs font-medium text-foreground">{option.label}</p>
-												<p className="text-[11px] text-muted-foreground">{option.detail}</p>
-											</div>
-											<Switch
-												checked={settings.promptPreferences[option.key]}
-												onCheckedChange={(checked) => updatePromptPreference(option.key, checked)}
-											/>
-										</div>
-									))}
-								</CardContent>
-							</Card>
-						</div>
-
 						<p className="min-h-4 text-center text-xs text-muted-foreground" role="status">
 							{status}
 						</p>
@@ -347,6 +288,8 @@ export default function App() {
 					</TabsContent>
 				</Tabs>
 			)}
+			</div>
+			<Footer />
 		</main>
 	);
 }
