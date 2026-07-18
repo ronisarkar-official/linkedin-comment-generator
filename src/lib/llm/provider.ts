@@ -38,18 +38,5 @@ export async function generateComments(
 		return generateWithAnthropic(request, settings, history);
 	}
 
-	// All other providers use the OpenAI-compatible chat completions API
-	const openaiCompatProviders = new Set([
-		'openai', 'openrouter', 'groq', 'together',
-		'mistral', 'deepseek', 'cohere', 'perplexity', 'xai',
-	]);
-
-	if (openaiCompatProviders.has(settings.provider)) {
-		return generateWithOpenAICompat(request, settings, history);
-	}
-
-	throw new LlmProviderError(
-		'PROVIDER_ERROR',
-		'The selected LLM provider is not supported.',
-	);
+	return generateWithOpenAICompat(request, settings, history);
 }

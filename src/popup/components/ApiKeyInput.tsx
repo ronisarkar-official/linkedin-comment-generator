@@ -61,7 +61,7 @@ export default function ApiKeyInput({
 		<section className="space-y-2">
 			<div className="flex items-center justify-between">
 				<label
-					className="text-sm font-semibold text-foreground"
+					className="text-sm font-semibold text-foreground text-balance"
 					htmlFor="api-key">
 					{providerLabel} API key
 				</label>

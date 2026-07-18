@@ -17,8 +17,10 @@ style.textContent = `
     justify-content: center;
     min-height: 40px;
     padding: 8px 12px;
+    transition: background-color 0.15s, scale 0.15s;
   }
   .lcg-generate-button:hover { background: rgba(10, 102, 194, 0.1); }
+  .lcg-generate-button:active { scale: 0.96; }
   .lcg-generate-button:disabled { cursor: wait; opacity: 0.65; }
   .lcg-fallback-action-bar { align-items: center; border-top: 1px solid rgba(140, 140, 140, 0.2); display: flex; min-height: 44px; padding: 2px 8px; width: 100%; }
   .lcg-spinner { animation: lcg-spin 0.75s linear infinite; border: 2px solid rgba(10, 102, 194, 0.25); border-radius: 50%; border-top-color: #0a66c2; display: inline-block; height: 14px; margin-right: 7px; width: 14px; }
@@ -38,11 +40,12 @@ style.textContent = `
   }
   .lcg-panel-header { align-items: center; cursor: grab; display: flex; justify-content: space-between; margin-bottom: 8px; user-select: none; }
   .lcg-panel-header strong { font-size: 16px; }
-  .lcg-close-button { align-items: center; background: rgba(0,0,0,0.04); border: 0; border-radius: 50%; color: #666; cursor: pointer; display: flex; font-size: 18px; font-weight: 700; height: 28px; justify-content: center; line-height: 1; transition: background 0.15s, color 0.15s; width: 28px; }
+  .lcg-close-button { align-items: center; background: rgba(0,0,0,0.04); border: 0; border-radius: 50%; color: #666; cursor: pointer; display: flex; font-size: 18px; font-weight: 700; height: 28px; justify-content: center; line-height: 1; transition: background 0.15s, color 0.15s, scale 0.15s; width: 28px; }
   .lcg-close-button:hover { background: rgba(0,0,0,0.12); color: #191919; }
-  .lcg-close-button:active { background: rgba(0,0,0,0.2); }
-  .lcg-variant-card { background: #fff; border: 1px solid #e0dfdc; border-radius: 8px; color: #191919; cursor: pointer; display: block; margin-top: 8px; padding: 10px; text-align: left; width: 100%; }
+  .lcg-close-button:active { background: rgba(0,0,0,0.2); scale: 0.96; }
+  .lcg-variant-card { background: #fff; border: 1px solid #e0dfdc; border-radius: 8px; color: #191919; cursor: pointer; display: block; margin-top: 8px; padding: 10px; text-align: left; width: 100%; transition: background-color 0.15s, border-color 0.15s, scale 0.15s; }
   .lcg-variant-card:hover { background: #f5f9fd; border-color: #0a66c2; }
+  .lcg-variant-card:active { scale: 0.96; }
   .lcg-variant-card:disabled { cursor: wait; opacity: 0.65; }
   .lcg-tone-label { border-radius: 999px; display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 5px; padding: 2px 7px; text-transform: uppercase; }
   .lcg-tone-professional { background: #dbeafe; color: #1e40af; }
@@ -53,20 +56,23 @@ style.textContent = `
   .lcg-refine-input-row { display: flex; gap: 6px; margin-bottom: 6px; }
   .lcg-refine-input { border: 1px solid #d6d6d6; border-radius: 6px; font-size: 13px; outline: none; padding: 6px 10px; width: 100%; }
   .lcg-refine-input:focus { border-color: #0a66c2; box-shadow: 0 0 0 1px #0a66c2; }
-  .lcg-refine-btn { background: #0a66c2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; white-space: nowrap; }
+  .lcg-refine-btn { background: #0a66c2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; white-space: nowrap; transition: background-color 0.15s, scale 0.15s; }
   .lcg-refine-btn:hover { background: #004182; }
+  .lcg-refine-btn:active { scale: 0.96; }
   .lcg-refine-btn:disabled { opacity: 0.6; cursor: wait; }
   .lcg-pills-row { display: flex; flex-wrap: wrap; gap: 4px; }
-  .lcg-pill { background: #f3f2ef; border: 1px solid #e0dfdc; border-radius: 999px; color: #5f5f5f; cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 8px; transition-property: background-color, color; transition-duration: 0.15s; }
+  .lcg-pill { background: #f3f2ef; border: 1px solid #e0dfdc; border-radius: 999px; color: #5f5f5f; cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 8px; transition-property: background-color, color, scale; transition-duration: 0.15s; }
   .lcg-pill:hover { background: #e0dfdc; color: #191919; }
+  .lcg-pill:active { scale: 0.96; }
   .lcg-pill:disabled { opacity: 0.5; cursor: wait; }
   .lcg-variant-text { display: block; }
   .lcg-panel-status { align-items: center; color: #5f5f5f; display: flex; font-size: 12px; min-height: 17px; padding-top: 8px; }
   .lcg-panel-status-error { color: #b42318; }
   .lcg-toast { background: #fff; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 320px; padding: 12px; position: fixed; z-index: 2147483640; }
   .lcg-toast-error { border-left: 4px solid #b42318; color: #7a271a; }
-  .lcg-floating-launcher { align-items: center; background: #0a66c2; border: 0; border-radius: 999px; bottom: 84px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); color: #fff; cursor: pointer; display: flex; font: 700 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; gap: 7px; padding: 13px 17px; position: fixed; right: 24px; z-index: 2147483639; }
+  .lcg-floating-launcher { align-items: center; background: #0a66c2; border: 0; border-radius: 999px; bottom: 84px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); color: #fff; cursor: pointer; display: flex; font: 700 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; gap: 7px; padding: 13px 17px; position: fixed; right: 24px; z-index: 2147483639; transition: background-color 0.15s, scale 0.15s; }
   .lcg-floating-launcher:hover { background: #004182; }
+  .lcg-floating-launcher:active { scale: 0.96; }
   @keyframes lcg-spin { to { transform: rotate(360deg); } }
   @media (prefers-color-scheme: dark) {
     .lcg-generate-button { color: #70b5f9; }

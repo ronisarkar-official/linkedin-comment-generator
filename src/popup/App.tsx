@@ -132,7 +132,7 @@ export default function App() {
 									render={
 										<Button
 											size="xs"
-											className="shrink-0 gap-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-2.5 text-[10px] font-bold text-white shadow-sm shadow-pink-500/30 hover:from-pink-600 hover:to-rose-600 transition-all active:scale-[0.96] animate-pulse"
+											className="shrink-0 gap-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-2.5 text-[10px] font-bold text-white shadow-sm shadow-pink-500/30 hover:from-pink-600 hover:to-rose-600 transition-[background,box-shadow,scale] active:scale-[0.96] animate-pulse"
 										/>
 									}
 								>
@@ -141,7 +141,7 @@ export default function App() {
 								</DialogTrigger>
 								<DialogContent className="max-w-[300px] p-5">
 									<DialogHeader>
-										<DialogTitle className="text-center text-base font-bold">
+										<DialogTitle className="text-center text-base font-bold text-balance">
 											Support via UPI
 										</DialogTitle>
 									</DialogHeader>
@@ -150,7 +150,7 @@ export default function App() {
 											<img
 												src="/icons/Roni-upi-qr-code.png"
 												alt="UPI QR Code"
-												className="h-48 w-48 object-contain"
+												className="h-48 w-48 object-contain rounded-lg outline outline-1 -outline-offset-1 outline-black/10"
 											/>
 										</div>
 										<p className="text-center text-xs text-muted-foreground">

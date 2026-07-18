@@ -1,5 +1,6 @@
 import { logger } from './logger';
 import type { CustomTone, HistoryEntry, LlmProvider, ProviderApiKeys, UserSettings } from './types';
+import { PROVIDERS } from './llm/registry';
 
 const SETTINGS_KEY = 'settings';
 const HISTORY_KEY = 'history';
@@ -7,10 +8,7 @@ export const MAX_HISTORY_ENTRIES = 50;
 export const MAX_CUSTOM_TONES = 999;
 export const MAX_STYLE_EXAMPLES = 5;
 
-const VALID_PROVIDERS = new Set<string>([
-	'gemini', 'openai', 'anthropic', 'openrouter', 'groq',
-	'together', 'mistral', 'deepseek', 'cohere', 'perplexity', 'xai',
-]);
+const VALID_PROVIDERS = new Set<string>(PROVIDERS.map((p) => p.id));
 
 export const DEFAULT_SETTINGS: UserSettings = {
 	apiKeys: {},

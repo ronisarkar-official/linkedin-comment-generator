@@ -62,7 +62,7 @@ export default function Footer({ links = SOCIAL_LINKS }: FooterProps) {
 						target="_blank"
 						rel="noopener noreferrer"
 						title={link.label}
-						className="text-muted-foreground transition-colors hover:text-foreground"
+						className="text-muted-foreground transition-[color,scale] hover:text-foreground active:scale-[0.96]"
 					>
 						{link.icon('h-4 w-4')}
 					</a>

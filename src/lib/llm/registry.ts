@@ -199,14 +199,6 @@ export function getProvider(id: LlmProvider): ProviderConfig {
 	return provider;
 }
 
-export function getDefaultModel(providerId: LlmProvider): string {
-	return getProvider(providerId).models[0].id;
-}
-
-export function getProviderLabel(id: LlmProvider): string {
-	return getProvider(id).label;
-}
-
 export function getModelLabel(providerId: LlmProvider, modelId: string): string {
 	const provider = getProvider(providerId);
 	const model = provider.models.find((m) => m.id === modelId);

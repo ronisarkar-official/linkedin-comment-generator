@@ -94,7 +94,7 @@ export default function CustomTones({ customTones, onChange }: CustomTonesProps)
 	return (
 		<section className="space-y-2">
 			<div className="flex items-center justify-between">
-				<label className="text-sm font-semibold text-foreground">
+				<label className="text-sm font-semibold text-foreground text-balance">
 					Custom Tones
 				</label>
 				{!isAdding && (

@@ -167,7 +167,7 @@ export default function HistoryTab() {
 										type="button"
 										onClick={() => handleInsert(v.text)}
 										disabled={insertingText === v.text}
-										className="group relative block w-full rounded-lg bg-muted p-2 text-left text-xs text-foreground transition-[background-color] hover:bg-accent disabled:cursor-wait disabled:opacity-70 active:scale-[0.99]">
+										className="group relative block w-full rounded-lg bg-muted p-2 text-left text-xs text-foreground transition-[background-color] hover:bg-accent disabled:cursor-wait disabled:opacity-70 active:scale-[0.96]">
 										<p className="pr-12">{v.text}</p>
 										<span className="absolute right-2 top-2 rounded bg-card px-1.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm border border-border opacity-80 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition-[opacity,background-color,color]">
 											{insertingText === v.text ? 'Inserting…' : 'Insert'}

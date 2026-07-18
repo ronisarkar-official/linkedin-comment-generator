@@ -64,16 +64,6 @@ export function inferCongratulation(text: string): boolean {
 }
 
 /**
- * Parses a retry-after header value from an HTTP response.
- */
-export function parseRetryAfter(response: Response): number | undefined {
-	const value = response.headers.get('retry-after');
-	if (!value) return undefined;
-	const seconds = Number(value);
-	return Number.isFinite(seconds) ? seconds : undefined;
-}
-
-/**
  * Attempts to parse LLM response content into CommentVariant[].
  *
  * Handles multiple formats:
