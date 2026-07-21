@@ -44,7 +44,7 @@ async function loadPanelPosition(): Promise<{ left: number; top: number } | null
 
 function waitForCommentInput(post: HTMLElement): Promise<HTMLElement | null> {
 	const existing = findCommentInput(post);
-	if (existing) return Promise.resolve(existing);
+	if (existing && post.contains(existing)) return Promise.resolve(existing);
 
 	findCommentTrigger(post)?.click();
 
