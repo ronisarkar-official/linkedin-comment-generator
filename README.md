@@ -6,24 +6,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/blob/main/LICENSE)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 
+<div align="center">
+<a href="https://www.producthunt.com/products/linkedin-comment-generator?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-linkedin-comment-generator" target="_blank" rel="noopener noreferrer"><img alt="LinkedIn Comment Generator - Write smarter LinkedIn comments in one click | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1220107&amp;theme=light&amp;t=1786432382656"></a>
+</div>
+
 A Manifest V3 Chrome extension that adds an inline **Generate Comment** button directly to LinkedIn posts. It sends post text through the background service worker to your chosen AI provider (Gemini, OpenRouter, OpenAI, Anthropic, Groq, and more), generates professional, witty, and supportive comment variants, and inserts your selected draft into LinkedIn's comment editor with one click.
 
 ---
 
 ## 🚀 Download & Install
 
-### Option 1: Download from GitHub Releases (Recommended)
+### Option 1: Microsoft Edge Add-ons (Recommended)
 
-1. Go to the [**Latest Release**](https://github.com/ronisarkar-official/linkedin-comment-generator/releases/latest)
-2. Download **`linkedin-comment-generator-v1.0.3.zip`**
-3. Extract the ZIP to a folder on your computer
-4. Open **Chrome** and navigate to `chrome://extensions`
-5. Enable **Developer mode** (toggle in the top-right corner)
-6. Click **Load unpacked**
-7. Select the **extracted folder**
-8. Visit [LinkedIn](https://www.linkedin.com/feed/) and start generating comments! 🎉
-
-> **💡 Also works with Microsoft Edge!** Go to `edge://extensions`, enable Developer mode, and load the same folder.
+Visit the [**LinkedIn Comment Generator**](https://microsoftedge.microsoft.com/addons/detail/linkedin-comment-generato/bgnnpcjchmccpijnlmpnciceabogpmpg) page on the Microsoft Edge Add-ons store and click **Get**. The extension works in both Microsoft Edge and Chrome.
 
 ### Option 2: Build from Source
 
@@ -34,7 +29,7 @@ npm install
 npm run build
 ```
 
-Then load the `dist/` directory as an unpacked extension (steps 4–8 above).
+Then open `chrome://extensions` (or `edge://extensions`), enable **Developer mode**, and load the `dist/` directory as an unpacked extension.
 
 ---
 
