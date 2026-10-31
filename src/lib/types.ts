@@ -42,6 +42,7 @@ export interface UserSettings {
 	promptPreferences: PromptPreferences;
 	customTones: CustomTone[];
 	styleExamples: string[];
+	promotionalMessage: string;
 }
 
 export interface CommentRequest {

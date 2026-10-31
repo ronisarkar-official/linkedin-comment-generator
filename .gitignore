@@ -2,6 +2,7 @@
 node_modules/
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -26,10 +27,16 @@ out/
 *.sln
 .idea/
 *.sublime-workspace
+*.swp
+*~
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
 
 # TypeScript
 *.tsbuildinfo
@@ -42,9 +49,21 @@ coverage/
 .cache/
 /.parcel-cache/
 *.tgz
+*.bak
+*.tmp
 
-# opencode
+# AI Agents & IDE tools
 .opencode/
+.gemini/
+.claude/
+.agents/.cache/
+.agents/temp/
+.agents
+.superpowers
+
+# Graphify (knowledge graph build outputs and local cache)
+graphify-out/
+.graphify*/
 
 # Release artifacts
 *.zip

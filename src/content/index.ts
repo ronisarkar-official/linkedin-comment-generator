@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger"
+import { getSettings } from "../lib/storage"
 import { showContentError, showVariantPicker, insertCommentIntoVisiblePost } from "./comment-box"
 import { findVisiblePost, observeLinkedInFeed } from "./dom-selectors"
 import { injectGenerateButton } from "./inject-button"
@@ -66,6 +67,7 @@ style.textContent = `
   .lcg-pill:active { scale: 0.96; }
   .lcg-pill:disabled { opacity: 0.5; cursor: wait; }
   .lcg-variant-text { display: block; }
+  .lcg-promo-preview { border-top: 1px dashed #e0dfdc; color: #7c7c7c; display: block; font-size: 11px; font-style: italic; margin-top: 6px; padding-top: 6px; white-space: pre-wrap; word-break: break-word; }
   .lcg-panel-status { align-items: center; color: #5f5f5f; display: flex; font-size: 12px; min-height: 17px; padding-top: 8px; }
   .lcg-panel-status-error { color: #b42318; }
   .lcg-toast { background: #fff; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 320px; padding: 12px; position: fixed; z-index: 2147483640; }
@@ -98,6 +100,7 @@ style.textContent = `
     .lcg-refine-btn:hover { background: #90caf9; }
     .lcg-pill { background: #283340; border-color: #38434f; color: #999; }
     .lcg-pill:hover { background: #38434f; color: #e0e0e0; }
+    .lcg-promo-preview { border-top-color: #38434f; color: #888; }
     .lcg-panel-status { color: #999; }
     .lcg-panel-status-error { color: #f87171; }
     .lcg-toast { background: #1d2226; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); }
@@ -183,7 +186,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true
   }
 
-  void insertCommentIntoVisiblePost(text)
+  // Append the user's promotional message, if configured. Use getSettings()
+  // so sync-storage fallback and the 500-character cap both apply here too.
+  void getSettings()
+    .catch(() => null)
+    .then((settings) => {
+      const promo = settings?.promotionalMessage.trim() ?? ''
+      return insertCommentIntoVisiblePost(promo ? `${text}\n\n${promo}` : text)
+    })
     .then((inserted) => {
       sendResponse(
         inserted

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ExternalLink, History, Loader2, Heart, Settings } from 'lucide-react';
-import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../lib/storage';
+import {
+	DEFAULT_SETTINGS,
+	MAX_PROMOTIONAL_MESSAGE_LENGTH,
+	getSettings,
+	saveSettings,
+} from '../lib/storage';
 import type {
 	CommentLength,
 	CustomTone,
@@ -110,6 +115,11 @@ export default function App() {
 	const updateProfileSummary = (profileSummary: string) => {
 		setStatus('');
 		persist({ profileSummary });
+	};
+
+	const updatePromotionalMessage = (promotionalMessage: string) => {
+		setStatus('');
+		persist({ promotionalMessage });
 	};
 
 	return (
@@ -277,6 +287,36 @@ export default function App() {
 						</div>
 
 						<StyleExamples styleExamples={settings.styleExamples || []} onChange={updateStyleExamples} />
+
+						<Separator />
+
+						<div className="space-y-2">
+							<div className="flex items-end justify-between gap-3">
+								<Label htmlFor="promotional-message" className="text-sm font-semibold text-foreground">
+									Promotional message
+								</Label>
+								<span className="text-[10px] font-medium text-muted-foreground text-pretty">
+									Appended to every comment
+								</span>
+							</div>
+							<Textarea
+								id="promotional-message"
+								value={settings.promotionalMessage}
+								onChange={(event) => updatePromotionalMessage(event.target.value)}
+								placeholder="Example: 🔗 Check out my newsletter: https://your-link.com"
+								rows={2}
+								maxLength={MAX_PROMOTIONAL_MESSAGE_LENGTH}
+								className="text-xs"
+							/>
+							<div className="flex items-start justify-between gap-3">
+								<p className="text-[10px] text-muted-foreground leading-relaxed">
+									Added after your generated comment. Supports links and emojis.
+								</p>
+								<span className="shrink-0 text-[10px] font-medium text-muted-foreground tabular-nums">
+									{settings.promotionalMessage.length}/{MAX_PROMOTIONAL_MESSAGE_LENGTH}
+								</span>
+							</div>
+						</div>
 
 						<p className="min-h-4 text-center text-xs text-muted-foreground" role="status">
 							{status}

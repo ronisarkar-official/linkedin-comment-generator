@@ -7,8 +7,8 @@ import type {
 import {
 	findActionBar,
 	findAuthorName,
+	findPostContainer,
 	findPostText,
-	POST_CONTAINER_SELECTORS,
 } from './dom-selectors';
 
 const INJECTED_ATTRIBUTE = 'data-lcg-injected';
@@ -16,7 +16,6 @@ const REQUESTS_PER_MINUTE = 5;
 const POST_DEBOUNCE_MS = 8_000;
 const recentRequests: number[] = [];
 const lastRequestByPost = new WeakMap<HTMLElement, number>();
-const postContainerSelector = POST_CONTAINER_SELECTORS.join(',');
 
 export type RefineCallback = (directive: string) => Promise<CommentVariant[] | string>;
 
@@ -26,6 +25,7 @@ export interface InjectionCallbacks {
 		variants: CommentVariant[],
 		anchor: HTMLElement,
 		onRefine?: RefineCallback,
+		promotionalMessage?: string,
 	) => void;
 	onError: (post: HTMLElement, message: string, anchor: HTMLElement) => void;
 }
@@ -94,26 +94,6 @@ function getFailureMessage(failure: GenerateCommentsFailure): string {
 	}
 }
 
-function findCanonicalPost(post: HTMLElement): HTMLElement {
-	let canonical = post;
-	let candidate: HTMLElement | null = post;
-
-	while (
-		candidate &&
-		candidate.tagName !== 'MAIN' &&
-		candidate !== document.body
-	) {
-		try {
-			if (candidate.matches(postContainerSelector)) canonical = candidate;
-		} catch {
-			return canonical;
-		}
-		candidate = candidate.parentElement;
-	}
-
-	return canonical;
-}
-
 function sendGenerateRequest(
 	postText: string,
 	authorName: string | undefined,
@@ -148,6 +128,7 @@ function sendGenerateRequest(
 function requestSettings(): Promise<{
 	defaultTone: string;
 	commentLength: string;
+	promotionalMessage: string;
 }> {
 	return new Promise((resolve, reject) => {
 		chrome.runtime.sendMessage(
@@ -170,6 +151,7 @@ function requestSettings(): Promise<{
 				resolve({
 					defaultTone: response.settings.defaultTone,
 					commentLength: response.settings.commentLength,
+					promotionalMessage: response.settings.promotionalMessage ?? '',
 				});
 			},
 		);
@@ -180,7 +162,7 @@ export function injectGenerateButton(
 	post: HTMLElement,
 	callbacks: InjectionCallbacks,
 ): void {
-	post = findCanonicalPost(post);
+	post = findPostContainer(post) ?? post;
 
 	const existingButtons = [
 		...post.querySelectorAll<HTMLButtonElement>('.lcg-generate-button'),
@@ -262,7 +244,13 @@ export function injectGenerateButton(
 				}
 			};
 
-			callbacks.onVariants(post, response.variants, button, onRefine);
+			callbacks.onVariants(
+				post,
+				response.variants,
+				button,
+				onRefine,
+				settings.promotionalMessage,
+			);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Could not generate comments.';

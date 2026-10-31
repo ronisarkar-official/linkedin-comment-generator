@@ -28,6 +28,22 @@ export const POST_CONTAINER_SELECTORS = [
   "main article",
 ]
 
+const COMBINED_POST_SELECTOR = POST_CONTAINER_SELECTORS.join(",")
+const ACTIVITY_CONTAINER_SELECTOR = [
+  '[data-id*="urn:li:activity"]',
+  '[data-urn*="urn:li:activity"]',
+  '[data-id*="urn:li:ugcPost"]',
+  '[data-urn*="urn:li:ugcPost"]',
+].join(",")
+const COMMENT_CONTENT_SELECTOR = [
+  ".comments-comment-item",
+  ".comments-comment-box",
+  ".comments-comment-list",
+  '[data-view-name*="comment-item"]',
+  '[data-id^="urn:li:comment:"]',
+  '[data-urn^="urn:li:comment:"]',
+].join(",")
+
 export const POST_TEXT_SELECTORS = [
   '[data-view-name="feed-commentary"]',
   '[data-view-name*="feed-commentary"]',
@@ -167,10 +183,60 @@ export function findPosts(root: ParentNode = document): HTMLElement[] {
     logger.debug("Could not locate posts semantically.", { error: String(error) })
   }
 
-  const matched = [...posts].filter((post) => Boolean(findPostText(post)))
+  const matched = [...posts].filter(
+    (post) => Boolean(findPostText(post)) && isSinglePostContainer(post),
+  )
   return matched.filter(
     (post) => !matched.some((other) => other !== post && other.contains(post)),
   )
+}
+
+/**
+ * A valid post container must not span more than one top-level activity.
+ * Nested activity containers (e.g. a repost's original update) are ignored.
+ */
+export function isSinglePostContainer(element: HTMLElement): boolean {
+  const identities = new Set<string>()
+  const nodes = [
+    element,
+    ...element.querySelectorAll<HTMLElement>(ACTIVITY_CONTAINER_SELECTOR),
+  ]
+
+  for (const node of nodes) {
+    if (node.closest(COMMENT_CONTENT_SELECTOR)) continue
+
+    const identity = node.getAttribute("data-id") ?? node.getAttribute("data-urn")
+    if (!identity) continue
+
+    const nesting = node.parentElement?.closest<HTMLElement>(ACTIVITY_CONTAINER_SELECTOR)
+    if (nesting && element.contains(nesting)) continue
+
+    identities.add(identity)
+    if (identities.size > 1) return false
+  }
+
+  return true
+}
+
+/**
+ * Nearest ancestor-or-self that represents one feed post. Never widens to a
+ * feed-level wrapper that can contain several posts.
+ */
+export function findPostContainer(element: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = element
+
+  while (node && node !== document.body && node.tagName !== "MAIN") {
+    try {
+      if (node.matches(COMBINED_POST_SELECTOR) && isSinglePostContainer(node)) {
+        return node
+      }
+    } catch {
+      return null
+    }
+    node = node.parentElement
+  }
+
+  return null
 }
 
 export function findPostTextElement(post: HTMLElement): HTMLElement | null {
@@ -236,52 +302,230 @@ export function findActionBar(post: HTMLElement): HTMLElement | null {
   return actionTrigger.parentElement
 }
 
-export function findCommentInput(post: HTMLElement): HTMLElement | null {
-  const collect = (root: ParentNode) => {
-    const inputs = new Set<HTMLElement>()
-    for (const selector of COMMENT_INPUT_SELECTORS) {
-      try {
-        root.querySelectorAll<HTMLElement>(selector).forEach((input) => inputs.add(input))
-      } catch (error) {
-        logger.debug("Could not query comment inputs.", { selector, error: String(error) })
-      }
+function collectCommentInputs(root: ParentNode): HTMLElement[] {
+  const inputs = new Set<HTMLElement>()
+
+  for (const selector of COMMENT_INPUT_SELECTORS) {
+    try {
+      root.querySelectorAll<HTMLElement>(selector).forEach((input) => inputs.add(input))
+    } catch (error) {
+      logger.debug("Could not query comment inputs.", { selector, error: String(error) })
     }
-    return [...inputs]
   }
 
-  const isVisible = (input: HTMLElement) => {
-    const rect = input.getBoundingClientRect()
-    return rect.width > 0 && rect.height > 0 && input.getAttribute("aria-hidden") !== "true"
+  return [...inputs]
+}
+
+function isVisibleCommentInput(input: HTMLElement): boolean {
+  const rect = input.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0 && input.getAttribute("aria-hidden") !== "true"
+}
+
+export function findCommentInput(post: HTMLElement): HTMLElement | null {
+  return collectCommentInputs(post).find(isVisibleCommentInput) ?? null
+}
+
+export function findVisibleCommentInputs(): HTMLElement[] {
+  return collectCommentInputs(document).filter(isVisibleCommentInput)
+}
+
+function readPostActivityIdentity(element: HTMLElement): string | null {
+  const value = element.getAttribute("data-id") ?? element.getAttribute("data-urn")
+  return value && /^urn:li:(activity|ugcPost):/.test(value) ? value : null
+}
+
+/**
+ * Stable activity identity for the post that owns this element. Comment URNs
+ * contain an activity URN as a substring, so only real post activity IDs count.
+ */
+export function findPostIdentity(element: HTMLElement): string | null {
+  let node: HTMLElement | null = element
+  while (node && node !== document.body) {
+    const identity = readPostActivityIdentity(node)
+    if (identity) return identity
+    node = node.parentElement
   }
 
-  const localInputs = collect(post)
-  const localVisible = localInputs.find(isVisible)
-  if (localVisible) return localVisible
-  if (localInputs[0]) return localInputs[0]
+  const descendant = element.querySelector<HTMLElement>(ACTIVITY_CONTAINER_SELECTOR)
+  return descendant ? readPostActivityIdentity(descendant) : null
+}
 
-  const postRect = post.getBoundingClientRect()
-  return (
-    collect(document)
-      .filter(isVisible)
-      .sort((left, right) => {
-        const leftDistance = Math.abs(left.getBoundingClientRect().top - postRect.bottom)
-        const rightDistance = Math.abs(right.getBoundingClientRect().top - postRect.bottom)
-        return leftDistance - rightDistance
-      })[0] ?? null
+function isComposerAfterTrigger(trigger: HTMLElement, input: HTMLElement): boolean {
+  return Boolean(
+    trigger.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING,
   )
 }
 
-export function findCommentTrigger(post: HTMLElement): HTMLButtonElement | null {
+function matchesPostIdentity(input: HTMLElement, identity: string | null): boolean {
+  if (!identity) return true
+  const inputIdentity = findPostIdentity(input)
+  return inputIdentity === null || inputIdentity === identity
+}
+
+/**
+ * Finds the composer for this post even when LinkedIn renders the comment
+ * section outside the detected post element (a sibling under the post's card).
+ * Only composers after the post's trigger and with the same activity identity
+ * qualify, so an earlier post's open composer is never returned.
+ */
+export function findCommentInputForPost(post: HTMLElement): HTMLElement | null {
+  const identity = findPostIdentity(post)
+  const trigger = findCommentTriggerForPost(post)
+  const direct = findCommentInput(post)
+  if (
+    direct &&
+    (!trigger || isComposerAfterTrigger(trigger, direct)) &&
+    matchesPostIdentity(direct, identity)
+  ) {
+    return direct
+  }
+
+  if (!trigger) {
+    if (!identity) return null
+    return findVisibleCommentInputs().find(
+      (input) => findPostIdentity(input) === identity,
+    ) ?? null
+  }
+
+  let container: HTMLElement | null = trigger.parentElement
+  while (container && container !== document.body) {
+    if (isSinglePostContainer(container)) {
+      const input = findCommentInput(container)
+      if (
+        input &&
+        isComposerAfterTrigger(trigger, input) &&
+        matchesPostIdentity(input, identity)
+      ) {
+        return input
+      }
+    }
+    container = container.parentElement
+  }
+
+  if (identity) {
+    return findVisibleCommentInputs().find(
+      (input) => findPostIdentity(input) === identity,
+    ) ?? null
+  }
+
+  return null
+}
+
+/**
+ * Confirms a composer found near the post is owned by that post and not by a
+ * sibling post inside a shared feed wrapper.
+ */
+export function isCommentInputOwnedByPost(
+  post: HTMLElement,
+  input: HTMLElement,
+): boolean {
+  const postIdentity = findPostIdentity(post)
+  const inputIdentity = findPostIdentity(input)
+
+  if (postIdentity && inputIdentity) {
+    return postIdentity === inputIdentity
+  }
+
+  if (post.contains(input)) return true
+
+  const trigger = findCommentTriggerForPost(post)
+  if (!trigger) return false
+  if (!isComposerAfterTrigger(trigger, input)) return false
+
+  let container: HTMLElement | null = trigger.parentElement
+  while (container && container !== document.body) {
+    if (container.contains(input)) return isSinglePostContainer(container)
+    container = container.parentElement
+  }
+
+  return false
+}
+
+/**
+ * A composer that appeared only after the trigger was clicked is a safe
+ * fallback when LinkedIn portals it outside the post (identity is unavailable).
+ */
+export function isNewComposerForPost(post: HTMLElement, input: HTMLElement): boolean {
+  const postIdentity = findPostIdentity(post)
+  const inputIdentity = findPostIdentity(input)
+
+  if (postIdentity && inputIdentity) return postIdentity === inputIdentity
+
+  const trigger = findCommentTriggerForPost(post)
+  return !trigger || isComposerAfterTrigger(trigger, input)
+}
+
+function isCommentSubmitButton(button: HTMLButtonElement): boolean {
+  const signal = [
+    button.getAttribute("data-view-name"),
+    button.getAttribute("aria-label"),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return signal.includes("submit") || signal.includes("post comment")
+}
+
+function isUsableCommentTrigger(control: HTMLElement): boolean {
+  if (control.classList.contains("lcg-generate-button")) return false
+  if (control.closest(COMMENT_CONTENT_SELECTOR)) return false
+  if (control instanceof HTMLButtonElement && isCommentSubmitButton(control)) {
+    return false
+  }
+  return true
+}
+
+export function findCommentTrigger(post: HTMLElement): HTMLElement | null {
   for (const selector of COMMENT_TRIGGER_SELECTORS) {
     try {
-      const trigger = [...post.querySelectorAll<HTMLButtonElement>(selector)].find(
-        (button) => !button.classList.contains("lcg-generate-button"),
+      const trigger = [...post.querySelectorAll<HTMLElement>(selector)].find(
+        isUsableCommentTrigger,
       )
       if (trigger) return trigger
     } catch (error) {
       logger.debug("Could not query comment triggers.", { selector, error: String(error) })
     }
   }
+
+  for (const control of post.querySelectorAll<HTMLElement>('button, [role="button"]')) {
+    if (!isUsableCommentTrigger(control)) continue
+
+    const signal = [
+      control.textContent,
+      control.getAttribute("aria-label"),
+      control.getAttribute("title"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase()
+
+    if (/^comment\b/.test(signal)) return control
+  }
+
+  return null
+}
+
+/**
+ * Finds the comment trigger even when LinkedIn renders the action bar outside
+ * the detected post element (a sibling under the post's card). Only
+ * single-post ancestors are searched so another post's trigger is never used.
+ */
+export function findCommentTriggerForPost(post: HTMLElement): HTMLElement | null {
+  const local = findCommentTrigger(post)
+  if (local) return local
+
+  let container: HTMLElement | null = post.parentElement
+  while (container && container !== document.body) {
+    if (isSinglePostContainer(container)) {
+      const trigger = findCommentTrigger(container)
+      if (trigger) return trigger
+    }
+    container = container.parentElement
+  }
+
   return null
 }
 
@@ -305,7 +549,9 @@ export function findVisiblePost(): HTMLElement | null {
       return Math.abs(leftCenter - viewportCenter) - Math.abs(rightCenter - viewportCenter)
     })
 
-  if (visibleDetected[0]) return visibleDetected[0]
+  if (visibleDetected[0]) {
+    return findPostContainer(visibleDetected[0]) ?? visibleDetected[0]
+  }
 
   const centerNode = document.elementFromPoint(window.innerWidth / 2, viewportCenter)
   let candidate = centerNode instanceof HTMLElement ? centerNode : centerNode?.parentElement
@@ -320,7 +566,7 @@ export function findVisiblePost(): HTMLElement | null {
       text.length >= 40 &&
       text.length <= 12_000
     ) {
-      return candidate
+      return findPostContainer(candidate)
     }
     candidate = candidate.parentElement
     depth += 1

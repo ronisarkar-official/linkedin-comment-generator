@@ -1,8 +1,13 @@
 import type { CommentVariant } from '../lib/types';
+import { logger } from '../lib/logger';
 import {
-	findCommentInput,
-	findCommentTrigger,
+	findCommentInputForPost,
+	findCommentTriggerForPost,
+	findVisibleCommentInputs,
 	findVisiblePost,
+	isCommentInputOwnedByPost,
+	isNewComposerForPost,
+	isSinglePostContainer,
 } from './dom-selectors';
 import type { RefineCallback } from './inject-button';
 
@@ -42,21 +47,50 @@ async function loadPanelPosition(): Promise<{ left: number; top: number } | null
 	return null;
 }
 
-function waitForCommentInput(post: HTMLElement): Promise<HTMLElement | null> {
-	const existing = findCommentInput(post);
-	if (existing && post.contains(existing)) return Promise.resolve(existing);
+interface FoundCommentInput {
+	input: HTMLElement;
+	viaSnapshot: boolean;
+}
 
-	findCommentTrigger(post)?.click();
+function waitForCommentInput(post: HTMLElement): Promise<FoundCommentInput | null> {
+	const existing = findCommentInputForPost(post);
+	if (existing) return Promise.resolve({ input: existing, viaSnapshot: false });
+
+	// Snapshot the boxes already open. Only a box that appears after this
+	// click (or one with the target post's identity) may be used, so a draft
+	// left open in an earlier post is never reused.
+	const beforeClick = new Set(findVisibleCommentInputs());
+	const trigger = findCommentTriggerForPost(post);
+	trigger?.click();
 
 	return new Promise((resolve) => {
 		let attempts = 0;
+		const finish = (found: FoundCommentInput | null) => {
+			window.clearInterval(timer);
+			resolve(found);
+		};
+
 		const timer = window.setInterval(() => {
-			const input = findCommentInput(post);
 			attempts += 1;
-			if (input || attempts >= 25) {
-				window.clearInterval(timer);
-				resolve(input);
+			const input = findCommentInputForPost(post);
+
+			if (input) {
+				finish({ input, viaSnapshot: false });
+				return;
 			}
+
+			const newlyAppeared = findVisibleCommentInputs().filter(
+				(candidate) => !beforeClick.has(candidate),
+			);
+			if (
+				newlyAppeared.length === 1 &&
+				isNewComposerForPost(post, newlyAppeared[0])
+			) {
+				finish({ input: newlyAppeared[0], viaSnapshot: true });
+				return;
+			}
+
+			if (attempts >= 25) finish(null);
 		}, 100);
 	});
 }
@@ -181,14 +215,53 @@ async function insertCommentText(
 	return normalizeText(readInputText(input)).includes(normalizeText(text));
 }
 
+export async function insertCommentIntoPost(
+	post: HTMLElement,
+	text: string,
+): Promise<boolean> {
+	if (!post.isConnected) {
+		logger.warn('Could not insert comment: the target post is no longer in the page.');
+		return false;
+	}
+
+	if (!isSinglePostContainer(post)) {
+		logger.warn('Could not insert comment: the target container spans several posts.', {
+			tag: post.tagName,
+			id: post.getAttribute('data-id') ?? post.getAttribute('data-urn'),
+			className: post.className,
+		});
+		return false;
+	}
+
+	const found = await waitForCommentInput(post);
+	if (!found || !found.input.isConnected) {
+		logger.warn('Could not insert comment: no comment box was found for this post.', {
+			tag: post.tagName,
+			id: post.getAttribute('data-id') ?? post.getAttribute('data-urn'),
+			className: post.className,
+			hasTrigger: Boolean(findCommentTriggerForPost(post)),
+		});
+		return false;
+	}
+
+	if (found.viaSnapshot) {
+		if (!isNewComposerForPost(post, found.input)) {
+			logger.warn('Could not insert comment: the new comment box is not for this post.');
+			return false;
+		}
+	} else if (!isCommentInputOwnedByPost(post, found.input)) {
+		logger.warn('Could not insert comment: the found comment box belongs to another post.');
+		return false;
+	}
+
+	return insertCommentText(found.input, text);
+}
+
 export async function insertCommentIntoVisiblePost(text: string): Promise<boolean> {
 	const post = findVisiblePost();
 	if (!post) return false;
 
-	const input = await waitForCommentInput(post);
-	if (!input) return false;
-
-	return insertCommentText(input, text);
+	return insertCommentIntoPost(post, text);
 }
 
 function positionPanel(panel: HTMLElement, anchor: HTMLElement): void {
@@ -275,8 +348,11 @@ export function showVariantPicker(
 	variants: CommentVariant[],
 	anchor: HTMLElement,
 	onRefine?: RefineCallback,
+	promotionalMessage?: string,
 ): void {
 	closeActivePanel();
+
+	const promoText = promotionalMessage?.trim() ?? '';
 
 	const panel = document.createElement('section');
 	panel.className = 'lcg-variant-panel';
@@ -332,6 +408,14 @@ export function showVariantPicker(
 			text.textContent = variant.text;
 
 			card.append(label, congratulation, text);
+
+			if (promoText) {
+				const promoPreview = document.createElement('span');
+				promoPreview.className = 'lcg-promo-preview';
+				promoPreview.textContent = promoText;
+				card.append(promoPreview);
+			}
+
 			card.addEventListener('click', async () => {
 				panel.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
 					button.disabled = true;
@@ -344,20 +428,8 @@ export function showVariantPicker(
 				statusText.textContent = 'Opening the LinkedIn comment box…';
 				status.append(spinner, statusText);
 
-				const input = await waitForCommentInput(post);
-				if (!input) {
-					panel
-						.querySelectorAll<HTMLButtonElement>('button')
-						.forEach((button) => {
-							button.disabled = false;
-						});
-					status.textContent =
-						"Could not find LinkedIn's comment box. Open it manually and try again.";
-					status.classList.add('lcg-panel-status-error');
-					return;
-				}
-
-				const inserted = await insertCommentText(input, variant.text);
+				const finalText = promoText ? `${variant.text}\n\n${promoText}` : variant.text;
+				const inserted = await insertCommentIntoPost(post, finalText);
 				if (!inserted) {
 					panel
 						.querySelectorAll<HTMLButtonElement>('button')
@@ -365,7 +437,7 @@ export function showVariantPicker(
 							button.disabled = false;
 						});
 					status.textContent =
-						'LinkedIn rejected the inserted text. Click inside the comment box and try again.';
+						'Could not insert the comment into this post. Open its comment box and try again.';
 					status.classList.add('lcg-panel-status-error');
 					return;
 				}

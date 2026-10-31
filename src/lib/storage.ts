@@ -7,6 +7,7 @@ const HISTORY_KEY = 'history';
 export const MAX_HISTORY_ENTRIES = 50;
 export const MAX_CUSTOM_TONES = 999;
 export const MAX_STYLE_EXAMPLES = 5;
+export const MAX_PROMOTIONAL_MESSAGE_LENGTH = 500;
 
 const VALID_PROVIDERS = new Set<string>(PROVIDERS.map((p) => p.id));
 
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	},
 	customTones: [],
 	styleExamples: [],
+	promotionalMessage: '',
 };
 
 function normalizePromptPreferences(
@@ -160,6 +162,9 @@ export async function getSettings(): Promise<UserSettings> {
 		),
 		customTones: normalizeCustomTones(mergedPrefs.customTones),
 		styleExamples: normalizeStyleExamples(mergedPrefs.styleExamples),
+		promotionalMessage: typeof mergedPrefs.promotionalMessage === 'string'
+			? mergedPrefs.promotionalMessage.slice(0, MAX_PROMOTIONAL_MESSAGE_LENGTH)
+			: DEFAULT_SETTINGS.promotionalMessage,
 	};
 }
 
@@ -169,6 +174,7 @@ export async function saveSettings(settings: UserSettings): Promise<void> {
 		...settings,
 		customTones: settings.customTones.slice(0, MAX_CUSTOM_TONES),
 		styleExamples: settings.styleExamples.slice(0, MAX_STYLE_EXAMPLES),
+		promotionalMessage: settings.promotionalMessage.slice(0, MAX_PROMOTIONAL_MESSAGE_LENGTH),
 	};
 
 	// Ensure no legacy top-level apiKey property is saved
