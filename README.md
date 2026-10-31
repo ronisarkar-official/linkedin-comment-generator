@@ -2,7 +2,7 @@
 
 ![LinkedIn Comment Generator Promotional Banner](promo_tile_1400x560.png)
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/releases/latest)
+[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/blob/main/LICENSE)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 
