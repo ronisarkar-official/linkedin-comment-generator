@@ -138,10 +138,12 @@ function sanitizeField(value: string, maxLen: number): string {
 	let sanitized = value;
 
 	// Strip any XML/HTML-like tags (covers <linkedin_post>, <system>, <instructions>, etc.)
-	sanitized = sanitized.replace(
-		/<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s[^>]*)?\s*>/g,
-		'',
-	);
+	const tagPattern = /<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s[^>]*)?\s*>/g;
+	let previous: string;
+	do {
+		previous = sanitized;
+		sanitized = sanitized.replace(tagPattern, '');
+	} while (sanitized !== previous);
 
 	// Strip common prompt injection phrases (case-insensitive)
 	const injectionPatterns = [
