@@ -44,11 +44,7 @@ When you request a comment generation, the extension sends the LinkedIn post tex
 - OpenRouter (openrouter.ai)
 - OpenAI (api.openai.com)
 - Anthropic (api.anthropic.com)
-- Groq (api.groq.com)
-- Together AI (api.together.xyz)
-- Mistral AI (api.mistral.ai)
 - DeepSeek (api.deepseek.com)
-- Cohere (api.cohere.com)
 - Perplexity (api.perplexity.ai)
 - xAI (api.x.ai)
 

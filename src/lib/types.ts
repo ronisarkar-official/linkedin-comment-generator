@@ -10,18 +10,21 @@ export interface CustomTone {
 
 export type CommentLength = 'short' | 'medium' | 'long';
 
+export interface ModelConfig {
+	id: string;
+	label: string;
+}
+
 export type LlmProvider =
 	| 'gemini'
 	| 'openai'
 	| 'anthropic'
 	| 'openrouter'
-	| 'groq'
-	| 'together'
-	| 'mistral'
 	| 'deepseek'
-	| 'cohere'
 	| 'perplexity'
-	| 'xai';
+	| 'xai'
+	| 'ollama'
+	| 'custom';
 
 export interface PromptPreferences {
 	avoidBuzzwords: boolean;
@@ -36,6 +39,7 @@ export interface UserSettings {
 	apiKeys: ProviderApiKeys;
 	provider: LlmProvider;
 	model: string;
+	customApiBase?: string;
 	defaultTone: string;
 	commentLength: CommentLength;
 	profileSummary: string;
@@ -98,6 +102,32 @@ export interface DeleteHistoryEntryResponse {
 export interface ClearHistoryResponse {
 	ok: true;
 }
+
+export interface FetchModelsMessage {
+	action: 'FETCH_MODELS';
+	payload: {
+		provider: LlmProvider;
+		apiKey?: string;
+		customApiBase?: string;
+		forceRefresh?: boolean;
+	};
+}
+
+export interface FetchModelsSuccess {
+	ok: true;
+	models: ModelConfig[];
+}
+
+export interface FetchModelsFailure {
+	ok: false;
+	error: {
+		code: ErrorCode;
+		message: string;
+	};
+	models: ModelConfig[];
+}
+
+export type FetchModelsResponse = FetchModelsSuccess | FetchModelsFailure;
 
 export interface GenerateCommentsSuccess {
 	ok: true;

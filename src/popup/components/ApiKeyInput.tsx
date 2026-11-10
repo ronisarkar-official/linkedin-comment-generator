@@ -6,6 +6,7 @@ interface ApiKeyInputProps {
 	providerLabel: string;
 	placeholder: string;
 	keyPrefix?: string;
+	isOptional?: boolean;
 	onSave: (apiKey: string) => Promise<void>;
 }
 
@@ -14,6 +15,7 @@ export default function ApiKeyInput({
 	providerLabel,
 	placeholder,
 	keyPrefix,
+	isOptional = false,
 	onSave,
 }: ApiKeyInputProps) {
 	const [apiKey, setApiKey] = useState(value);
@@ -31,7 +33,23 @@ export default function ApiKeyInput({
 	const handleSave = async () => {
 		const normalized = apiKey.trim();
 
-		if (normalized.length < 10) {
+		if (isOptional && normalized.length === 0) {
+			setSaving(true);
+			setFeedback('');
+			try {
+				await onSave('');
+				setIsError(false);
+				setFeedback('Saved (no API key required).');
+			} catch {
+				setIsError(true);
+				setFeedback('Could not save settings.');
+			} finally {
+				setSaving(false);
+			}
+			return;
+		}
+
+		if (!isOptional && normalized.length < 10) {
 			setIsError(true);
 			setFeedback(`Enter a valid ${providerLabel} API key.`);
 			return;
@@ -63,7 +81,7 @@ export default function ApiKeyInput({
 				<label
 					className="text-sm font-semibold text-foreground text-balance"
 					htmlFor="api-key">
-					{providerLabel} API key
+					{providerLabel} API key {isOptional ? <span className="text-xs font-normal text-muted-foreground">(optional)</span> : null}
 				</label>
 				<span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary-foreground">
 					Local only

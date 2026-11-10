@@ -14,17 +14,26 @@ export async function generateWithOpenAICompat(
   const providerConfig = getProvider(settings.provider);
   const providerLabel = providerConfig.label;
   const model = validateModelId(settings.model || providerConfig.models[0].id);
-  const chatEndpoint = `${providerConfig.apiBase}/chat/completions`;
+
+  const rawApiBase =
+    (settings.provider === 'custom' || settings.provider === 'ollama') && settings.customApiBase?.trim()
+      ? settings.customApiBase.trim()
+      : providerConfig.apiBase;
+  const apiBase = rawApiBase.replace(/\/+$/, '');
+  const chatEndpoint = apiBase.endsWith('/chat/completions') ? apiBase : `${apiBase}/chat/completions`;
   const apiKey = settings.apiKeys[settings.provider] ?? '';
 
-  if (!providerConfig.apiBase.startsWith('https://')) {
+  const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(apiBase);
+  if (!apiBase.startsWith('https://') && !isLocalhost) {
     throw new LlmProviderError('PROVIDER_ERROR', `${providerLabel} API endpoint must use HTTPS.`);
   }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
   };
+  if (apiKey.trim()) {
+    headers.Authorization = `Bearer ${apiKey.trim()}`;
+  }
   if (settings.provider === 'openrouter') {
     headers['X-OpenRouter-Title'] = 'LinkedIn Comment Generator';
   }
@@ -61,21 +70,14 @@ export async function generateWithOpenAICompat(
     const chatPayload = payload as Record<string, unknown>;
     let rawText: string | undefined;
 
-    // Cohere v2 format
-    const msg = chatPayload.message as Record<string, unknown> | undefined;
-    if (msg?.content) {
-      const parts = msg.content as Array<{ type?: string; text?: string }>;
-      rawText = parts.map((p) => (p.type === undefined || p.type === 'text') ? (p.text ?? '') : '').join('\n').trim();
-    } else {
-      const choice = (chatPayload.choices as Array<Record<string, unknown>> | undefined)?.[0];
-      if (choice?.error) {
-        throw new LlmProviderError('PROVIDER_ERROR', (choice.error as Record<string, unknown>).message as string);
-      }
-      const message = choice?.message as { content?: string | Array<{ type?: string; text?: string }> } | undefined;
-      const content = message?.content;
-      if (typeof content === 'string') rawText = content;
-      else if (Array.isArray(content)) rawText = content.filter((p) => p.type === undefined || p.type === 'text').map((p) => p.text ?? '').join('\n').trim();
+    const choice = (chatPayload.choices as Array<Record<string, unknown>> | undefined)?.[0];
+    if (choice?.error) {
+      throw new LlmProviderError('PROVIDER_ERROR', (choice.error as Record<string, unknown>).message as string);
     }
+    const message = choice?.message as { content?: string | Array<{ type?: string; text?: string }> } | undefined;
+    const content = message?.content;
+    if (typeof content === 'string') rawText = content;
+    else if (Array.isArray(content)) rawText = content.filter((p) => p.type === undefined || p.type === 'text').map((p) => p.text ?? '').join('\n').trim();
 
     if (!rawText) {
       throw new LlmProviderError('INVALID_RESPONSE', `${providerLabel} returned no comment variants.`);

@@ -1,19 +1,43 @@
 import { logger } from '../lib/logger';
 import { generateComments } from '../lib/llm/provider';
-import { addHistoryEntry, clearHistory, deleteHistoryEntry, getHistory, getSettings } from '../lib/storage';
+import { fetchLiveModels } from '../lib/llm/model-fetcher';
+import { getDefaultModels } from '../lib/llm/registry';
+import {
+	addHistoryEntry,
+	clearHistory,
+	deleteHistoryEntry,
+	getCachedModels,
+	getHistory,
+	getSettings,
+	setCachedModels,
+} from '../lib/storage';
 import type {
 	ClearHistoryResponse,
 	CommentRequest,
 	DeleteHistoryEntryResponse,
+	FetchModelsMessage,
+	FetchModelsResponse,
 	GenerateCommentsFailure,
 	GenerateCommentsMessage,
 	GenerateCommentsResponse,
 	GetSettingsMessage,
 	GetSettingsResponse,
+	LlmProvider,
 } from '../lib/types';
 import { LlmProviderError } from '../lib/types';
 
 const validLengths = new Set(['short', 'medium', 'long']);
+const validProviders = new Set<string>([
+	'gemini',
+	'openai',
+	'anthropic',
+	'openrouter',
+	'deepseek',
+	'perplexity',
+	'xai',
+	'ollama',
+	'custom',
+]);
 
 function isCommentRequest(value: unknown): value is CommentRequest {
 	if (!value || typeof value !== 'object') return false;
@@ -43,6 +67,71 @@ function isGetSettingsMessage(value: unknown): value is GetSettingsMessage {
 	if (!value || typeof value !== 'object') return false;
 	const message = value as Record<string, unknown>;
 	return message.action === 'GET_SETTINGS';
+}
+
+function isFetchModelsMessage(value: unknown): value is FetchModelsMessage {
+	if (!value || typeof value !== 'object') return false;
+	const message = value as Record<string, unknown>;
+	if (message.action !== 'FETCH_MODELS') return false;
+	if (!message.payload || typeof message.payload !== 'object') return false;
+	const payload = message.payload as Record<string, unknown>;
+	return (
+		typeof payload.provider === 'string' &&
+		validProviders.has(payload.provider) &&
+		(payload.apiKey === undefined || typeof payload.apiKey === 'string') &&
+		(payload.customApiBase === undefined || typeof payload.customApiBase === 'string') &&
+		(payload.forceRefresh === undefined || typeof payload.forceRefresh === 'boolean')
+	);
+}
+
+async function handleFetchModels(
+	provider: LlmProvider,
+	providedApiKey?: string,
+	providedCustomApiBase?: string,
+	forceRefresh = false,
+): Promise<FetchModelsResponse> {
+	const fallbackModels = getDefaultModels(provider);
+
+	try {
+		if (!forceRefresh) {
+			const cached = await getCachedModels(provider);
+			if (cached && cached.length > 0) {
+				return { ok: true, models: cached };
+			}
+		}
+
+		let apiKey = providedApiKey;
+		let customApiBase = providedCustomApiBase;
+		if (!apiKey || (!customApiBase && (provider === 'custom' || provider === 'ollama'))) {
+			const settings = await getSettings();
+			if (!apiKey) {
+				apiKey = settings.apiKeys[provider] ?? '';
+			}
+			if (!customApiBase) {
+				customApiBase = settings.customApiBase;
+			}
+		}
+
+		const models = await fetchLiveModels(provider, apiKey, customApiBase);
+		if (models && models.length > 0) {
+			await setCachedModels(provider, models);
+			return { ok: true, models };
+		}
+		return { ok: true, models: fallbackModels };
+	} catch (error) {
+		logger.warn('Failed to fetch live models, falling back to defaults.', {
+			provider,
+			error: error instanceof Error ? error.message : 'Unknown',
+		});
+		return {
+			ok: false,
+			error: {
+				code: error instanceof LlmProviderError ? error.code : 'UNKNOWN_ERROR',
+				message: error instanceof Error ? error.message : 'Could not fetch models.',
+			},
+			models: fallbackModels,
+		};
+	}
 }
 
 function toFailure(error: unknown): GenerateCommentsFailure {
@@ -154,6 +243,32 @@ chrome.runtime.onMessage.addListener(
 			void clearHistory()
 				.then(() => sendResponse({ ok: true } satisfies ClearHistoryResponse))
 				.catch((error: unknown) => sendResponse(toFailure(error)));
+			return true;
+		}
+
+		if (candidate.action === 'FETCH_MODELS') {
+			if (!isFetchModelsMessage(message)) {
+				sendResponse({
+					ok: false,
+					error: {
+						code: 'INVALID_REQUEST',
+						message: 'Invalid FETCH_MODELS message payload.',
+					},
+					models: [],
+				} satisfies FetchModelsResponse);
+				return true;
+			}
+
+			logger.debug('Handling FETCH_MODELS.', {
+				provider: message.payload.provider,
+				forceRefresh: message.payload.forceRefresh,
+			});
+			void handleFetchModels(
+				message.payload.provider,
+				message.payload.apiKey,
+				message.payload.customApiBase,
+				message.payload.forceRefresh,
+			).then(sendResponse);
 			return true;
 		}
 

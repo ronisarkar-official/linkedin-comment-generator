@@ -1,9 +1,11 @@
 import { logger } from './logger';
-import type { CustomTone, HistoryEntry, LlmProvider, ProviderApiKeys, UserSettings } from './types';
+import type { CustomTone, HistoryEntry, LlmProvider, ModelConfig, ProviderApiKeys, UserSettings } from './types';
 import { PROVIDERS } from './llm/registry';
 
 const SETTINGS_KEY = 'settings';
 const HISTORY_KEY = 'history';
+const MODELS_CACHE_KEY = 'models_cache_v2';
+export const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const MAX_HISTORY_ENTRIES = 50;
 export const MAX_CUSTOM_TONES = 999;
 export const MAX_STYLE_EXAMPLES = 5;
@@ -15,6 +17,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	apiKeys: {},
 	provider: 'gemini',
 	model: 'gemini-2.5-flash',
+	customApiBase: 'http://localhost:11434/v1',
 	defaultTone: 'professional',
 	commentLength: 'medium',
 	profileSummary: '',
@@ -146,6 +149,9 @@ export async function getSettings(): Promise<UserSettings> {
 		model: typeof mergedPrefs.model === 'string' && mergedPrefs.model.trim()
 			? mergedPrefs.model as string
 			: DEFAULT_SETTINGS.model,
+		customApiBase: typeof mergedPrefs.customApiBase === 'string' && mergedPrefs.customApiBase.trim()
+			? (mergedPrefs.customApiBase as string).trim()
+			: DEFAULT_SETTINGS.customApiBase,
 		defaultTone: typeof mergedPrefs.defaultTone === 'string' && mergedPrefs.defaultTone.trim()
 			? mergedPrefs.defaultTone as string
 			: DEFAULT_SETTINGS.defaultTone,
@@ -212,4 +218,60 @@ export async function deleteHistoryEntry(id: string): Promise<void> {
 
 export async function clearHistory(): Promise<void> {
 	await chrome.storage.local.remove(HISTORY_KEY);
+}
+
+export async function getCachedModels(
+	provider: LlmProvider,
+	maxAgeMs = MODEL_CACHE_TTL_MS,
+): Promise<ModelConfig[] | null> {
+	try {
+		const stored = await chrome.storage.local.get(MODELS_CACHE_KEY);
+		const cache = stored[MODELS_CACHE_KEY] as Record<string, { models: ModelConfig[]; timestamp: number }> | undefined;
+		if (!cache || !cache[provider]) return null;
+
+		const entry = cache[provider];
+		if (!Array.isArray(entry.models) || entry.models.length === 0) return null;
+		if (Date.now() - entry.timestamp > maxAgeMs) return null;
+
+		return entry.models;
+	} catch {
+		return null;
+	}
+}
+
+export async function setCachedModels(
+	provider: LlmProvider,
+	models: ModelConfig[],
+): Promise<void> {
+	try {
+		const stored = await chrome.storage.local.get(MODELS_CACHE_KEY);
+		const cache = (stored[MODELS_CACHE_KEY] as Record<string, { models: ModelConfig[]; timestamp: number }> | undefined) ?? {};
+		cache[provider] = {
+			models,
+			timestamp: Date.now(),
+		};
+		await chrome.storage.local.set({ [MODELS_CACHE_KEY]: cache });
+	} catch (error) {
+		logger.warn('Could not save cached models.', {
+			provider,
+			error: error instanceof Error ? error.message : 'Unknown',
+		});
+	}
+}
+
+export async function clearModelCache(provider?: LlmProvider): Promise<void> {
+	try {
+		if (!provider) {
+			await chrome.storage.local.remove(MODELS_CACHE_KEY);
+			return;
+		}
+		const stored = await chrome.storage.local.get(MODELS_CACHE_KEY);
+		const cache = stored[MODELS_CACHE_KEY] as Record<string, unknown> | undefined;
+		if (cache && provider in cache) {
+			delete cache[provider];
+			await chrome.storage.local.set({ [MODELS_CACHE_KEY]: cache });
+		}
+	} catch {
+		// Ignore error
+	}
 }

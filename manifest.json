@@ -10,13 +10,12 @@
     "https://openrouter.ai/*",
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
-    "https://api.groq.com/*",
-    "https://api.together.xyz/*",
-    "https://api.mistral.ai/*",
     "https://api.deepseek.com/*",
-    "https://api.cohere.com/*",
     "https://api.perplexity.ai/*",
-    "https://api.x.ai/*"
+    "https://api.x.ai/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "src/background/index.ts",

@@ -1,14 +1,11 @@
-import type { LlmProvider } from '../types';
+import type { LlmProvider, ModelConfig } from '../types';
 
-export interface ModelConfig {
-	id: string;
-	label: string;
-}
+export type { ModelConfig };
 
 /**
  * How the provider handles structured JSON output:
- * - 'json_schema': Full OpenAI-style json_schema (OpenAI, Perplexity, Mistral)
- * - 'json_object': Simple { type: "json_object" } mode (Groq, Together, DeepSeek, Cohere, xAI)
+ * - 'json_schema': Full OpenAI-style json_schema (OpenAI, Perplexity)
+ * - 'json_object': Simple { type: "json_object" } mode (DeepSeek, xAI)
  * - 'none': No response_format support — rely on prompt-based JSON (OpenRouter free models)
  */
 export type ResponseFormatType = 'json_schema' | 'json_object' | 'none';
@@ -40,11 +37,11 @@ export const PROVIDERS: ProviderConfig[] = [
 		id: 'openai',
 		label: 'OpenAI',
 		models: [
-			{ id: 'gpt-5.5-pro', label: 'GPT-5.5 Pro' },
-			{ id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' },
-			{ id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
 			{ id: 'gpt-4o', label: 'GPT-4o' },
 			{ id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+			{ id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+			{ id: 'o3-mini', label: 'o3-mini' },
+			{ id: 'o1', label: 'o1' },
 		],
 		apiBase: 'https://api.openai.com/v1',
 		keyPlaceholder: 'sk-…',
@@ -55,9 +52,10 @@ export const PROVIDERS: ProviderConfig[] = [
 		id: 'anthropic',
 		label: 'Anthropic',
 		models: [
-			{ id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
-			{ id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-			{ id: 'claude-opus-4-8', label: 'Claude Opus 4.8' },
+			{ id: 'claude-3-7-sonnet-20250219', label: 'Claude 3.7 Sonnet' },
+			{ id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+			{ id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+			{ id: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
 		],
 		apiBase: 'https://api.anthropic.com/v1',
 		keyPlaceholder: 'sk-ant-…',
@@ -79,44 +77,7 @@ export const PROVIDERS: ProviderConfig[] = [
 		keyPrefix: 'sk-or-',
 		responseFormat: 'none',
 	},
-	{
-		id: 'groq',
-		label: 'Groq',
-		models: [
-			{ id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-			{ id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout' },
-			{ id: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick' },
-			{ id: 'qwen/qwen3-32b', label: 'Qwen 3 32B' },
-		],
-		apiBase: 'https://api.groq.com/openai/v1',
-		keyPlaceholder: 'gsk_…',
-		keyPrefix: 'gsk_',
-		responseFormat: 'json_object',
-	},
-	{
-		id: 'together',
-		label: 'Together',
-		models: [
-			{ id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B' },
-			{ id: 'Qwen/Qwen2.5-72B-Instruct-Turbo', label: 'Qwen 2.5 72B' },
-			{ id: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3' },
-		],
-		apiBase: 'https://api.together.xyz/v1',
-		keyPlaceholder: 'tok_…',
-		responseFormat: 'json_object',
-	},
-	{
-		id: 'mistral',
-		label: 'Mistral',
-		models: [
-			{ id: 'mistral-large-latest', label: 'Mistral Large' },
-			{ id: 'mistral-small-latest', label: 'Mistral Small' },
-			{ id: 'mistral-medium-latest', label: 'Mistral Medium' },
-		],
-		apiBase: 'https://api.mistral.ai/v1',
-		keyPlaceholder: 'API key…',
-		responseFormat: 'json_object',
-	},
+
 	{
 		id: 'deepseek',
 		label: 'DeepSeek',
@@ -129,17 +90,7 @@ export const PROVIDERS: ProviderConfig[] = [
 		keyPrefix: 'sk-',
 		responseFormat: 'json_object',
 	},
-	{
-		id: 'cohere',
-		label: 'Cohere',
-		models: [
-			{ id: 'command-a-03-2025', label: 'Command A' },
-			{ id: 'command-r-plus-08-2024', label: 'Command R+' },
-		],
-		apiBase: 'https://api.cohere.com/v2',
-		keyPlaceholder: 'API key…',
-		responseFormat: 'json_object',
-	},
+
 	{
 		id: 'perplexity',
 		label: 'Perplexity',
@@ -157,13 +108,38 @@ export const PROVIDERS: ProviderConfig[] = [
 		id: 'xai',
 		label: 'xAI (Grok)',
 		models: [
-			{ id: 'grok-4.3', label: 'Grok 4.3' },
-			{ id: 'grok-4.1', label: 'Grok 4.1 Fast' },
-			{ id: 'grok-build-0.1', label: 'Grok Build' },
+			{ id: 'grok-2', label: 'Grok 2' },
+			{ id: 'grok-2-mini', label: 'Grok 2 Mini' },
+			{ id: 'grok-beta', label: 'Grok Beta' },
 		],
 		apiBase: 'https://api.x.ai/v1',
 		keyPlaceholder: 'xai-…',
 		keyPrefix: 'xai-',
+		responseFormat: 'json_object',
+	},
+	{
+		id: 'ollama',
+		label: 'Ollama (Local)',
+		models: [
+			{ id: 'llama3.2', label: 'Llama 3.2' },
+			{ id: 'llama3.1', label: 'Llama 3.1' },
+			{ id: 'mistral', label: 'Mistral' },
+			{ id: 'gemma2', label: 'Gemma 2' },
+			{ id: 'phi4', label: 'Phi 4' },
+			{ id: 'qwen2.5', label: 'Qwen 2.5' },
+		],
+		apiBase: 'http://localhost:11434/v1',
+		keyPlaceholder: 'Not required for local models',
+		responseFormat: 'json_object',
+	},
+	{
+		id: 'custom',
+		label: 'Custom (OpenCode / Local / Proxy)',
+		models: [
+			{ id: 'default', label: 'Default Model' },
+		],
+		apiBase: 'http://localhost:4096',
+		keyPlaceholder: 'Optional (e.g. OpenCode password or Bearer key)',
 		responseFormat: 'json_object',
 	},
 ];
@@ -199,7 +175,19 @@ export function getProvider(id: LlmProvider): ProviderConfig {
 	return provider;
 }
 
-export function getModelLabel(providerId: LlmProvider, modelId: string): string {
+export function getDefaultModels(providerId: LlmProvider): ModelConfig[] {
+	return getProvider(providerId).models;
+}
+
+export function getModelLabel(
+	providerId: LlmProvider,
+	modelId: string,
+	customModels?: ModelConfig[],
+): string {
+	if (customModels) {
+		const match = customModels.find((m) => m.id === modelId);
+		if (match) return match.label;
+	}
 	const provider = getProvider(providerId);
 	const model = provider.models.find((m) => m.id === modelId);
 	return model?.label ?? modelId;

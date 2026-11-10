@@ -26,8 +26,16 @@
   }
 
   button,
-  input {
+  input,
+  select,
+  textarea {
     font: inherit;
+  }
+
+  select option {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    font-family: inherit;
   }
   html {
     @apply font-sans;
