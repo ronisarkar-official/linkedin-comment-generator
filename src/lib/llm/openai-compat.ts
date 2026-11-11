@@ -62,8 +62,12 @@ export async function generateWithOpenAICompat(
       ],
       temperature: attempt === 0 ? 0.72 : 0.82,
       top_p: 0.85,
-      max_completion_tokens: 2_048,
     };
+    if (isLocalhost || settings.provider === 'ollama') {
+      body.max_tokens = 2_048;
+    } else {
+      body.max_completion_tokens = 2_048;
+    }
     if (responseFormat) body.response_format = responseFormat;
 
     const payload = await attemptFetch(providerLabel, chatEndpoint, headers, JSON.stringify(body), attempt);

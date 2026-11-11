@@ -51,7 +51,9 @@ function isCommentRequest(value: unknown): value is CommentRequest {
 		typeof request.length === 'string' &&
 		validLengths.has(request.length) &&
 		(request.authorName === undefined || typeof request.authorName === 'string') &&
-		(request.customDirective === undefined || typeof request.customDirective === 'string')
+		(request.customDirective === undefined || typeof request.customDirective === 'string') &&
+		(request.postDate === undefined || typeof request.postDate === 'string') &&
+		(request.postTimestamp === undefined || typeof request.postTimestamp === 'number')
 	);
 }
 
@@ -176,6 +178,12 @@ async function handleGenerate(
 				id: crypto.randomUUID(),
 				postText: request.postText,
 				authorName: request.authorName,
+				postUrl: request.postUrl,
+				postUrn: request.postUrn,
+				postDate: request.postDate,
+				postTimestamp: request.postTimestamp,
+				provider: settings.provider,
+				model: settings.model,
 				tone: request.tone,
 				length: request.length,
 				variants,

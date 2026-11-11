@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { decryptApiKeys, encryptApiKeys } from './crypto';
 import type { CustomTone, HistoryEntry, LlmProvider, ModelConfig, ProviderApiKeys, UserSettings } from './types';
 import { PROVIDERS } from './llm/registry';
 
@@ -6,7 +7,7 @@ const SETTINGS_KEY = 'settings';
 const HISTORY_KEY = 'history';
 const MODELS_CACHE_KEY = 'models_cache_v2';
 export const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-export const MAX_HISTORY_ENTRIES = 50;
+export const MAX_HISTORY_ENTRIES = 1000;
 export const MAX_CUSTOM_TONES = 999;
 export const MAX_STYLE_EXAMPLES = 5;
 export const MAX_PROMOTIONAL_MESSAGE_LENGTH = 500;
@@ -30,6 +31,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	customTones: [],
 	styleExamples: [],
 	promotionalMessage: '',
+	anonymizeAuthorName: false,
 };
 
 function normalizePromptPreferences(
@@ -125,7 +127,8 @@ export async function getSettings(): Promise<UserSettings> {
 	// Security: provider and apiKeys must come from local storage only.
 	// Sync storage may only provide non-sensitive display preferences.
 	const provider = normalizeProvider(localSettings?.provider ?? syncSettings?.provider);
-	const apiKeys = normalizeApiKeys(localSettings ?? {}, provider);
+	const rawApiKeys = normalizeApiKeys(localSettings ?? {}, provider);
+	const apiKeys = await decryptApiKeys(rawApiKeys);
 
 	// Merge non-sensitive settings from sync as baseline, then local overrides.
 	const mergedPrefs: Record<string, unknown> = {};
@@ -171,6 +174,7 @@ export async function getSettings(): Promise<UserSettings> {
 		promotionalMessage: typeof mergedPrefs.promotionalMessage === 'string'
 			? mergedPrefs.promotionalMessage.slice(0, MAX_PROMOTIONAL_MESSAGE_LENGTH)
 			: DEFAULT_SETTINGS.promotionalMessage,
+		anonymizeAuthorName: Boolean(mergedPrefs.anonymizeAuthorName),
 	};
 }
 
@@ -185,7 +189,17 @@ export async function saveSettings(settings: UserSettings): Promise<void> {
 
 	// Ensure no legacy top-level apiKey property is saved
 	const { apiKey: _legacyKey, ...cleanSettings } = bounded as unknown as Record<string, unknown>;
-	await chrome.storage.local.set({ [SETTINGS_KEY]: cleanSettings });
+
+	// Transparently encrypt API keys at rest in chrome.storage.local
+	const encryptedApiKeys = await encryptApiKeys(
+		(cleanSettings.apiKeys as ProviderApiKeys) || {},
+	);
+	await chrome.storage.local.set({
+		[SETTINGS_KEY]: {
+			...cleanSettings,
+			apiKeys: encryptedApiKeys,
+		},
+	});
 	try {
 		const { apiKeys: _keys, apiKey: _legacySyncKey, provider: _prov, ...syncableSettings } = cleanSettings;
 		await chrome.storage.sync.set({ [SETTINGS_KEY]: syncableSettings });

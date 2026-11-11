@@ -1,4 +1,11 @@
 import { logger } from '../lib/logger';
+import {
+  cleanAuthorName,
+  cleanPostDateText,
+  extractPostTimestampFromUrn,
+  extractUsernameFromUrl,
+  parseRelativeTimeToMs,
+} from '../lib/text-utils';
 
 export const FEED_CONTAINER_SELECTORS = [
   '[data-testid="mainFeed"]',
@@ -59,12 +66,52 @@ export const POST_TEXT_SELECTORS = [
 ]
 
 export const POST_AUTHOR_SELECTORS = [
+  // 1. Modern LinkedIn actor titles and headers
+  '.update-components-actor__title span[aria-hidden="true"]',
+  '.update-components-actor__title',
+  '.feed-shared-actor__title span[aria-hidden="true"]',
+  '.feed-shared-actor__title',
+  '[class*="update-components-actor__title"] span[aria-hidden="true"]',
+  '[class*="update-components-actor__title"]',
+  '[class*="feed-shared-actor__title"] span[aria-hidden="true"]',
+  '[class*="feed-shared-actor__title"]',
+  '.update-components-actor__name',
+  '.feed-shared-actor__name',
+  '[class*="actor__title"] span[aria-hidden="true"]',
+  '[class*="actor__title"]',
+  '[class*="actor__name"]',
+  // 2. Profile and actor links
+  'a.update-components-actor__meta-link span[aria-hidden="true"]',
+  'a.update-components-actor__meta-link',
+  'a.feed-shared-actor__container-link span[aria-hidden="true"]',
+  'a.feed-shared-actor__container-link',
+  'a[data-field="actor_name"]',
+  // 3. Anonymized / test / view attributes
+  '[data-anonymize="person-name"]',
+  '[data-anonymize="company-name"]',
   '[data-view-name*="actor-name"]',
   '[data-testid*="actor-name"]',
-  ".update-components-actor__name",
-  ".feed-shared-actor__name",
+  // 4. Actor container scoped profile anchors
+  '[class*="actor"] a[href*="/in/"] span[aria-hidden="true"]',
+  '[class*="actor"] a[href*="/in/"]',
+  '[class*="actor"] a[href*="/company/"] span[aria-hidden="true"]',
+  '[class*="actor"] a[href*="/company/"]',
   'a[href*="/in/"] strong',
-  'span[aria-hidden="true"]',
+  'a[href*="/in/"] span',
+]
+
+export const POST_DATE_SELECTORS = [
+  'time',
+  '.update-components-actor__sub-description span[aria-hidden="true"]',
+  '.update-components-actor__sub-description',
+  '.feed-shared-actor__sub-description span[aria-hidden="true"]',
+  '.feed-shared-actor__sub-description',
+  'a.update-components-actor__sub-description-link',
+  '[class*="actor__sub-description"] span[aria-hidden="true"]',
+  '[class*="actor__sub-description"]',
+  'a[href*="/feed/update/"] span[aria-hidden="true"]',
+  'a[href*="/posts/"] span[aria-hidden="true"]',
+  '[data-view-name*="feed-full-update"] [class*="sub-description"]',
 ]
 
 export const ACTION_BAR_SELECTORS = [
@@ -261,8 +308,138 @@ export function findPostText(post: HTMLElement): string {
 }
 
 export function findAuthorName(post: HTMLElement): string | undefined {
-  const value = queryFirst<HTMLElement>(post, POST_AUTHOR_SELECTORS)?.innerText.trim()
-  return value || undefined
+  // 1. Query structured actor title/link selectors
+  for (const selector of POST_AUTHOR_SELECTORS) {
+    try {
+      const elements = post.querySelectorAll<HTMLElement>(selector);
+      for (const el of elements) {
+        const raw = el.innerText || el.textContent || '';
+        const cleaned = cleanAuthorName(raw);
+        if (cleaned) {
+          return cleaned;
+        }
+      }
+    } catch (error) {
+      logger.debug('Failed querying author selector.', { selector, error: String(error) });
+    }
+  }
+
+  // 2. Fallback to author avatar image alt/title text
+  const AVATAR_SELECTORS = [
+    'img.update-components-actor__avatar-image',
+    '.update-components-actor__image img',
+    '.feed-shared-actor__image img',
+    '[class*="actor"] img[alt]',
+    'a[href*="/in/"] img[alt]',
+    'a[href*="/company/"] img[alt]',
+  ];
+  for (const selector of AVATAR_SELECTORS) {
+    try {
+      const imgs = post.querySelectorAll<HTMLImageElement>(selector);
+      for (const img of imgs) {
+        const alt = img.getAttribute('alt') || img.getAttribute('title') || '';
+        const cleaned = cleanAuthorName(alt);
+        if (cleaned) {
+          return cleaned;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Fallback to username/handle from profile or company link
+  const profileAnchor = post.querySelector<HTMLAnchorElement>(
+    'a[href*="/in/"], a[href*="/company/"]',
+  );
+  if (profileAnchor?.href) {
+    const handle = extractUsernameFromUrl(profileAnchor.href);
+    if (handle) {
+      return handle;
+    }
+  }
+
+  return undefined;
+}
+
+export function findPostUrl(post: HTMLElement): string | undefined {
+  const identity = findPostIdentity(post)
+  if (identity) {
+    const match = identity.match(/\d{15,25}/) ?? identity.match(/\d+/)
+    if (match) {
+      return `https://www.linkedin.com/feed/update/urn:li:activity:${match[0]}/`
+    }
+  }
+  const link = post.querySelector<HTMLAnchorElement>(
+    'a[href*="/feed/update/"], a[href*="/posts/"], a[href*="activity:"]',
+  )
+  return link?.href || undefined
+}
+
+export interface PostDateResult {
+  postDate?: string;
+  postTimestamp?: number;
+}
+
+export function findPostDate(
+  post: HTMLElement,
+  postUrn?: string,
+  postUrl?: string,
+): PostDateResult {
+  // Strategy 1: Exact Snowflake timestamp from activity ID
+  const snowflakeTs =
+    extractPostTimestampFromUrn(postUrn) ||
+    extractPostTimestampFromUrn(postUrl) ||
+    extractPostTimestampFromUrn(findPostIdentity(post));
+
+  // Strategy 2: Human-readable relative date from DOM
+  let domDateText: string | undefined;
+  for (const selector of POST_DATE_SELECTORS) {
+    try {
+      const elements = post.querySelectorAll<HTMLElement>(selector);
+      for (const el of elements) {
+        if (el.tagName.toLowerCase() === 'time') {
+          const datetime = el.getAttribute('datetime');
+          if (datetime) {
+            const parsedDt = new Date(datetime).getTime();
+            if (!isNaN(parsedDt)) {
+              const cleaned = cleanPostDateText(el.innerText || el.textContent);
+              return {
+                postDate: cleaned || datetime.split('T')[0],
+                postTimestamp: snowflakeTs || parsedDt,
+              };
+            }
+          }
+        }
+
+        const candidateTexts = [
+          el.getAttribute('aria-label'),
+          el.getAttribute('title'),
+          el.innerText,
+          el.textContent,
+        ];
+
+        for (const candidate of candidateTexts) {
+          const cleaned = cleanPostDateText(candidate);
+          if (cleaned) {
+            domDateText = cleaned;
+            break;
+          }
+        }
+        if (domDateText) break;
+      }
+      if (domDateText) break;
+    } catch {
+      // ignore selector errors
+    }
+  }
+
+  const postTimestamp =
+    snowflakeTs || (domDateText ? parseRelativeTimeToMs(domDateText) : undefined);
+  const postDate =
+    domDateText || (postTimestamp ? new Date(postTimestamp).toISOString().split('T')[0] : undefined);
+
+  return { postDate, postTimestamp };
 }
 
 export function findActionBar(post: HTMLElement): HTMLElement | null {
@@ -330,8 +507,41 @@ export function findVisibleCommentInputs(): HTMLElement[] {
 }
 
 function readPostActivityIdentity(element: HTMLElement): string | null {
-  const value = element.getAttribute("data-id") ?? element.getAttribute("data-urn")
-  return value && /^urn:li:(activity|ugcPost):/.test(value) ? value : null
+  const candidates = [
+    element.getAttribute("data-id"),
+    element.getAttribute("data-urn"),
+    element.getAttribute("data-chameleon-result-urn"),
+    element.getAttribute("data-view-tracking-scope"),
+    element.getAttribute("data-activity-id"),
+  ];
+
+  for (const val of candidates) {
+    if (!val) continue;
+
+    // Direct urn:li:activity:123 or urn:li:ugcPost:123
+    const directMatch = val.match(/urn:li:(?:activity|ugcPost|share):(\d{15,22})/i);
+    if (directMatch) {
+      return `urn:li:activity:${directMatch[1]}`;
+    }
+
+    // Modern LinkedIn fsd_update: urn:li:fsd_update:(urn:li:activity:123,...)
+    const fsdMatch = val.match(/(?:activity|ugcPost):(\d{15,22})/i);
+    if (fsdMatch) {
+      return `urn:li:activity:${fsdMatch[1]}`;
+    }
+  }
+
+  const anchor = element.querySelector<HTMLAnchorElement>(
+    'a[href*="/feed/update/urn:li:"], a[href*="activity:"]',
+  );
+  if (anchor?.href) {
+    const anchorMatch = anchor.href.match(/(?:activity|ugcPost):(\d{15,22})/i);
+    if (anchorMatch) {
+      return `urn:li:activity:${anchorMatch[1]}`;
+    }
+  }
+
+  return null;
 }
 
 /**

@@ -8,7 +8,10 @@ import {
 	findActionBar,
 	findAuthorName,
 	findPostContainer,
+	findPostDate,
+	findPostIdentity,
 	findPostText,
+	findPostUrl,
 } from './dom-selectors';
 
 const INJECTED_ATTRIBUTE = 'data-lcg-injected';
@@ -67,12 +70,26 @@ function sendGenerateRequest(
 	tone: string,
 	length: string,
 	customDirective?: string,
+	postUrl?: string,
+	postUrn?: string,
+	postDate?: string,
+	postTimestamp?: number,
 ): Promise<GenerateCommentsResponse> {
 	return new Promise((resolve, reject) => {
 		chrome.runtime.sendMessage(
 			{
 				action: 'GENERATE_COMMENTS',
-				payload: { postText, authorName, tone, length, customDirective },
+				payload: {
+					postText,
+					authorName,
+					tone,
+					length,
+					customDirective,
+					postUrl,
+					postUrn,
+					postDate,
+					postTimestamp,
+				},
 			},
 			(response: GenerateCommentsResponse | undefined) => {
 				const runtimeError = chrome.runtime.lastError;
@@ -168,12 +185,21 @@ export function injectGenerateButton(
 		setLoading(button, true);
 		try {
 			const settings = await requestSettings();
+			const authorName = findAuthorName(post);
+			const postUrl = findPostUrl(post);
+			const postUrn = findPostIdentity(post) || undefined;
+			const { postDate, postTimestamp } = findPostDate(post, postUrn, postUrl);
 
 			const response = await sendGenerateRequest(
 				postText,
-				findAuthorName(post),
+				authorName,
 				settings.defaultTone,
 				settings.commentLength,
+				undefined,
+				postUrl,
+				postUrn,
+				postDate,
+				postTimestamp,
 			);
 
 			if (!response.ok) {
@@ -186,10 +212,14 @@ export function injectGenerateButton(
 					const latestSettings = await requestSettings();
 					const res = await sendGenerateRequest(
 						postText,
-						findAuthorName(post),
+						authorName,
 						latestSettings.defaultTone,
 						latestSettings.commentLength,
 						directive,
+						postUrl,
+						postUrn,
+						postDate,
+						postTimestamp,
 					);
 					if (!res.ok) return getFailureMessage(res);
 					return res.variants;

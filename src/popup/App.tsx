@@ -33,8 +33,10 @@ import CustomTones from './components/CustomTones';
 import HistoryTab from './components/HistoryTab';
 import Footer from './components/Footer';
 import LengthSelector from './components/LengthSelector';
+import LocalAiStatus from './components/LocalAiStatus';
 import StyleExamples from './components/StyleExamples';
 import ToneSelector from './components/ToneSelector';
+import type { LocalProbeResult } from '../lib/llm/local-probe';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -266,6 +268,28 @@ export default function App() {
 	const updateModel = (model: string) => {
 		setStatus('');
 		persist({ model });
+	};
+
+	const handleSelectModelFromLocal = (modelId: string) => {
+		setAvailableModels((prev) => {
+			if (!prev.some((m) => m.id === modelId)) {
+				return [{ id: modelId, label: modelId }, ...prev];
+			}
+			return prev;
+		});
+		updateModel(modelId);
+	};
+
+	const handleLocalProbeSuccess = (result: LocalProbeResult) => {
+		if (result.models && result.models.length > 0) {
+			setAvailableModels((prev) => {
+				const existing = new Set(prev.map((m) => m.id));
+				const additions = result.models
+					.filter((id) => !existing.has(id))
+					.map((id) => ({ id, label: id }));
+				return additions.length > 0 ? [...additions, ...prev] : prev;
+			});
+		}
 	};
 
 	const updateLength = (commentLength: CommentLength) => {
@@ -527,104 +551,114 @@ export default function App() {
 
 								{(settings.provider === 'ollama' ||
 									settings.provider === 'custom') && (
-									<div className="space-y-1.5 rounded-lg border border-border/80 bg-muted/40 p-2.5">
-										<div className="flex items-center justify-between">
-											<Label
-												htmlFor="custom-endpoint-url"
-												className="text-xs font-semibold text-foreground">
-												{settings.provider === 'ollama' ?
-													'Ollama API URL'
-												:	'API Endpoint URL'}
-											</Label>
-											<span className="text-[10px] text-muted-foreground font-mono">
-												{settings.provider === 'ollama' ?
-													':11434/v1'
-												:	'OpenCode / OpenAI-compat'}
-											</span>
-										</div>
-										<div className="flex gap-1.5">
-											<input
-												id="custom-endpoint-url"
-												type="url"
-												value={
-													settings.customApiBase ??
-													(settings.provider === 'ollama' ?
-														'http://localhost:11434/v1'
-													:	'http://localhost:4096')
-												}
-												onChange={(e) => updateCustomApiBase(e.target.value)}
-												placeholder={
-													settings.provider === 'ollama' ?
-														'http://localhost:11434/v1'
-													:	'http://localhost:4096'
-												}
-												className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs font-mono text-foreground shadow-sm outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
-											/>
-											<Button
-												type="button"
-												size="xs"
-												variant="outline"
-												onClick={() =>
-													void loadModels(
-														settings.provider,
-														settings.apiKeys[settings.provider],
-														settings.customApiBase,
-														true,
-													)
-												}
-												disabled={loadingModels}
-												className="h-8 shrink-0 px-2.5 text-[11px] font-medium">
-												{loadingModels ?
-													<Loader2 className="h-3 w-3 animate-spin" />
-												:	'Connect'}
-											</Button>
+									<div className="space-y-2">
+										<div className="space-y-1.5 rounded-lg border border-border/80 bg-muted/40 p-2.5">
+											<div className="flex items-center justify-between">
+												<Label
+													htmlFor="custom-endpoint-url"
+													className="text-xs font-semibold text-foreground">
+													{settings.provider === 'ollama' ?
+														'Ollama API URL'
+													:	'API Endpoint URL'}
+												</Label>
+												<span className="text-[10px] text-muted-foreground font-mono">
+													{settings.provider === 'ollama' ?
+														':11434/v1'
+													:	'OpenCode / OpenAI-compat'}
+												</span>
+											</div>
+											<div className="flex gap-1.5">
+												<input
+													id="custom-endpoint-url"
+													type="url"
+													value={
+														settings.customApiBase ??
+														(settings.provider === 'ollama' ?
+															'http://localhost:11434/v1'
+														:	'http://localhost:4096')
+													}
+													onChange={(e) => updateCustomApiBase(e.target.value)}
+													placeholder={
+														settings.provider === 'ollama' ?
+															'http://localhost:11434/v1'
+														:	'http://localhost:4096'
+													}
+													className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs font-mono text-foreground shadow-sm outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/20"
+												/>
+												<Button
+													type="button"
+													size="xs"
+													variant="outline"
+													onClick={() =>
+														void loadModels(
+															settings.provider,
+															settings.apiKeys[settings.provider],
+															settings.customApiBase,
+															true,
+														)
+													}
+													disabled={loadingModels}
+													className="h-8 shrink-0 px-2.5 text-[11px] font-medium">
+													{loadingModels ?
+														<Loader2 className="h-3 w-3 animate-spin" />
+													:	'Connect'}
+												</Button>
+											</div>
+
+											{settings.provider === 'custom' && (
+												<div className="space-y-1 pt-0.5">
+													<div className="flex flex-wrap items-center gap-1">
+														<span className="text-[10px] font-medium text-muted-foreground">
+															Presets:
+														</span>
+														<button
+															type="button"
+															onClick={() =>
+																applyCustomPreset('http://localhost:4096')
+															}
+															className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
+															OpenCode (4096)
+														</button>
+														<button
+															type="button"
+															onClick={() =>
+																applyCustomPreset('http://localhost:1234/v1')
+															}
+															className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
+															LM Studio (1234)
+														</button>
+														<button
+															type="button"
+															onClick={() =>
+																applyCustomPreset('http://localhost:11434/v1')
+															}
+															className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
+															Ollama (11434)
+														</button>
+														<button
+															type="button"
+															onClick={() =>
+																applyCustomPreset('http://localhost:8080/v1')
+															}
+															className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
+															LocalAI (8080)
+														</button>
+													</div>
+													<p className="text-[10px] text-muted-foreground leading-tight">
+														For OpenCode serve, paste the server password as the
+														API key.
+													</p>
+												</div>
+											)}
 										</div>
 
-										{settings.provider === 'custom' && (
-											<div className="space-y-1 pt-0.5">
-												<div className="flex flex-wrap items-center gap-1">
-													<span className="text-[10px] font-medium text-muted-foreground">
-														Presets:
-													</span>
-													<button
-														type="button"
-														onClick={() =>
-															applyCustomPreset('http://localhost:4096')
-														}
-														className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
-														OpenCode (4096)
-													</button>
-													<button
-														type="button"
-														onClick={() =>
-															applyCustomPreset('http://localhost:1234/v1')
-														}
-														className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
-														LM Studio (1234)
-													</button>
-													<button
-														type="button"
-														onClick={() =>
-															applyCustomPreset('http://localhost:11434/v1')
-														}
-														className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
-														Ollama (11434)
-													</button>
-													<button
-														type="button"
-														onClick={() =>
-															applyCustomPreset('http://localhost:8080/v1')
-														}
-														className="rounded bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 border border-border/60 hover:bg-muted cursor-pointer transition-colors shadow-2xs">
-														LocalAI (8080)
-													</button>
-												</div>
-												<p className="text-[10px] text-muted-foreground leading-tight">
-													For OpenCode serve, paste the server password as the
-													API key.
-												</p>
-											</div>
-										)}
+										<LocalAiStatus
+											provider={settings.provider}
+											customApiBase={settings.customApiBase}
+											selectedModel={settings.model}
+											onSelectModel={handleSelectModelFromLocal}
+											onProbeSuccess={handleLocalProbeSuccess}
+										/>
 									</div>
 								)}
 

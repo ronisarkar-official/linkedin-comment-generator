@@ -3,7 +3,7 @@
   "name": "LinkedIn Comment Generator",
   "description": "Generate thoughtful, tone-matched comments for LinkedIn posts.",
   "version": "1.0.4",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://generativelanguage.googleapis.com/*",

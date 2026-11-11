@@ -47,11 +47,16 @@ export interface UserSettings {
 	customTones: CustomTone[];
 	styleExamples: string[];
 	promotionalMessage: string;
+	anonymizeAuthorName?: boolean;
 }
 
 export interface CommentRequest {
 	postText: string;
 	authorName?: string;
+	postUrl?: string;
+	postUrn?: string;
+	postDate?: string;
+	postTimestamp?: number;
 	tone: string;
 	length: string;
 	customDirective?: string;
@@ -67,6 +72,12 @@ export interface HistoryEntry {
 	id: string;
 	postText: string;
 	authorName?: string;
+	postUrl?: string;
+	postUrn?: string;
+	postDate?: string;
+	postTimestamp?: number;
+	provider?: string;
+	model?: string;
 	tone?: string;
 	length?: string;
 	variants: CommentVariant[];
