@@ -283,6 +283,35 @@ export default function App() {
 		persist({ promotionalMessage });
 	};
 
+	const handlePromotionalKeyDown = (
+		event: React.KeyboardEvent<HTMLTextAreaElement>,
+	) => {
+		if (event.key === 'Tab' && !event.shiftKey) {
+			event.preventDefault();
+			const textarea = event.currentTarget;
+			const start = textarea.selectionStart;
+			const end = textarea.selectionEnd;
+			const currentValue = textarea.value;
+			const tabChar = '\t';
+
+			if (
+				currentValue.length + tabChar.length - (end - start) >
+				MAX_PROMOTIONAL_MESSAGE_LENGTH
+			) {
+				return;
+			}
+
+			const nextValue =
+				currentValue.substring(0, start) + tabChar + currentValue.substring(end);
+			updatePromotionalMessage(nextValue);
+
+			requestAnimationFrame(() => {
+				textarea.selectionStart = textarea.selectionEnd =
+					start + tabChar.length;
+			});
+		}
+	};
+
 	return (
 		<main className="flex flex-col w-90 min-h-125 max-h-150 bg-background text-foreground">
 			<header className="shrink-0 bg-primary px-4 py-3 text-primary-foreground">
@@ -690,15 +719,16 @@ export default function App() {
 									onChange={(event) =>
 										updatePromotionalMessage(event.target.value)
 									}
+									onKeyDown={handlePromotionalKeyDown}
 									placeholder="Example: 🔗 Check out my newsletter: https://your-link.com"
-									rows={2}
+									rows={3}
 									maxLength={MAX_PROMOTIONAL_MESSAGE_LENGTH}
-									className="text-xs"
+									className="text-xs whitespace-pre-wrap"
+									style={{ tabSize: 2 }}
 								/>
 								<div className="flex items-start justify-between gap-3">
 									<p className="text-[10px] text-muted-foreground leading-relaxed">
-										Added after your generated comment. Supports links and
-										emojis.
+										Appended to your comment. Add Enter, Tab, or Spacebar to customize spacing.
 									</p>
 									<span className="shrink-0 text-[10px] font-medium text-muted-foreground tabular-nums">
 										{settings.promotionalMessage.length}/

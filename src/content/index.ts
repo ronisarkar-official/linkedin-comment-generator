@@ -1,5 +1,6 @@
 import { logger } from "../lib/logger"
 import { getSettings } from "../lib/storage"
+import { formatCommentWithPromo } from "../lib/text-utils"
 import { showContentError, showVariantPicker, insertCommentIntoVisiblePost } from "./comment-box"
 import { findVisiblePost, observeLinkedInFeed } from "./dom-selectors"
 import { injectGenerateButton } from "./inject-button"
@@ -191,8 +192,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void getSettings()
     .catch(() => null)
     .then((settings) => {
-      const promo = settings?.promotionalMessage.trim() ?? ''
-      return insertCommentIntoVisiblePost(promo ? `${text}\n\n${promo}` : text)
+      const promo = settings?.promotionalMessage ?? ''
+      return insertCommentIntoVisiblePost(formatCommentWithPromo(text, promo))
     })
     .then((inserted) => {
       sendResponse(

@@ -1,5 +1,6 @@
 import type { CommentVariant } from '../lib/types';
 import { logger } from '../lib/logger';
+import { formatCommentWithPromo } from '../lib/text-utils';
 import {
 	findCommentInputForPost,
 	findCommentTriggerForPost,
@@ -352,7 +353,10 @@ export function showVariantPicker(
 ): void {
 	closeActivePanel();
 
-	const promoText = promotionalMessage?.trim() ?? '';
+	const hasPromo = Boolean(
+		promotionalMessage && promotionalMessage.trim().length > 0,
+	);
+	const promoPreviewText = hasPromo ? promotionalMessage!.trimEnd() : '';
 
 	const panel = document.createElement('section');
 	panel.className = 'lcg-variant-panel';
@@ -409,10 +413,10 @@ export function showVariantPicker(
 
 			card.append(label, congratulation, text);
 
-			if (promoText) {
+			if (promoPreviewText) {
 				const promoPreview = document.createElement('span');
 				promoPreview.className = 'lcg-promo-preview';
-				promoPreview.textContent = promoText;
+				promoPreview.textContent = promoPreviewText;
 				card.append(promoPreview);
 			}
 
@@ -428,7 +432,7 @@ export function showVariantPicker(
 				statusText.textContent = 'Opening the LinkedIn comment box…';
 				status.append(spinner, statusText);
 
-				const finalText = promoText ? `${variant.text}\n\n${promoText}` : variant.text;
+				const finalText = formatCommentWithPromo(variant.text, promotionalMessage);
 				const inserted = await insertCommentIntoPost(post, finalText);
 				if (!inserted) {
 					panel

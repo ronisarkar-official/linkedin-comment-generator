@@ -2,17 +2,10 @@
 
 ![LinkedIn Comment Generator Promotional Banner](promo_tile_1400x560.png)
 
-<div align="left">
-
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/blob/main/LICENSE)
-[![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/ronisarkar-official/linkedin-comment-generator/pulls)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg?style=plastic)](https://github.com/ronisarkar-official/linkedin-comment-generator/releases/latest) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=plastic)](https://github.com/ronisarkar-official/linkedin-comment-generator/blob/main/LICENSE) [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-orange.svg?style=plastic)](https://developer.chrome.com/docs/extensions/mv3/)
 
 <br />
-
+<div align="center">
 <a href="https://www.producthunt.com/products/linkedin-comment-generator?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-linkedin-comment-generator" target="_blank" rel="noopener noreferrer"><img alt="LinkedIn Comment Generator - Write smarter LinkedIn comments in one click | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1220107&amp;theme=light&amp;t=1786432382656"></a>
 
 </div>

@@ -28,3 +28,24 @@ export function similarity(left: string, right: string): number {
 	}
 	return overlap / Math.max(leftTokens.size, rightTokens.size);
 }
+
+/**
+ * Formats a generated comment with an optional user promotional message.
+ *
+ * Does not insert any paragraph break or newline by default — all spacing is left
+ * entirely to the user's choice. Any leading newlines (Enter), tabs (Tab), or
+ * spaces (Spacebar) entered in the promotional message box are preserved exactly as typed.
+ */
+export function formatCommentWithPromo(
+	comment: string,
+	promotionalMessage?: string,
+): string {
+	const baseComment = comment.trimEnd();
+	if (!promotionalMessage || promotionalMessage.trim().length === 0) {
+		return baseComment;
+	}
+
+	const promo = promotionalMessage.trimEnd();
+	return `${baseComment}${promo}`;
+}
+
