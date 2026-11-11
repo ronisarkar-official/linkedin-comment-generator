@@ -12,10 +12,6 @@ import {
 } from './dom-selectors';
 
 const INJECTED_ATTRIBUTE = 'data-lcg-injected';
-const REQUESTS_PER_MINUTE = 5;
-const POST_DEBOUNCE_MS = 8_000;
-const recentRequests: number[] = [];
-const lastRequestByPost = new WeakMap<HTMLElement, number>();
 
 export type RefineCallback = (directive: string) => Promise<CommentVariant[] | string>;
 
@@ -46,35 +42,6 @@ function setLoading(button: HTMLButtonElement, loading: boolean): void {
 	}
 
 	button.textContent = 'Generate Comment';
-}
-
-/** Check if a request would exceed the rate limit, without mutating state. */
-function checkClientRateLimit(post: HTMLElement): string | null {
-	const now = Date.now();
-	const lastPostRequest = lastRequestByPost.get(post) ?? 0;
-	if (now - lastPostRequest < POST_DEBOUNCE_MS) {
-		return 'Please wait a few seconds before regenerating comments for this post.';
-	}
-
-	while (recentRequests.length > 0 && now - recentRequests[0] >= 60_000) {
-		recentRequests.shift();
-	}
-
-	if (recentRequests.length >= REQUESTS_PER_MINUTE) {
-		const retrySeconds = Math.max(
-			1,
-			Math.ceil((60_000 - (now - recentRequests[0])) / 1000),
-		);
-		return `Local rate limit reached. Try again in ${retrySeconds} seconds.`;
-	}
-
-	return null;
-}
-
-/** Record that a request was made (call only after successful API response). */
-function recordRequest(post: HTMLElement): void {
-	lastRequestByPost.set(post, Date.now());
-	recentRequests.push(Date.now());
 }
 
 function getFailureMessage(failure: GenerateCommentsFailure): string {
@@ -198,13 +165,6 @@ export function injectGenerateButton(
 			return;
 		}
 
-		// Check rate limit BEFORE loading settings to avoid wasting slots
-		const rateLimitError = checkClientRateLimit(post);
-		if (rateLimitError) {
-			callbacks.onError(post, rateLimitError, button);
-			return;
-		}
-
 		setLoading(button, true);
 		try {
 			const settings = await requestSettings();
@@ -221,12 +181,7 @@ export function injectGenerateButton(
 				return;
 			}
 
-			// Only record the rate limit slot after a successful response
-			recordRequest(post);
-
 			const onRefine: RefineCallback = async (directive: string) => {
-				const rateLimitErr = checkClientRateLimit(post);
-				if (rateLimitErr) return rateLimitErr;
 				try {
 					const latestSettings = await requestSettings();
 					const res = await sendGenerateRequest(
@@ -237,7 +192,6 @@ export function injectGenerateButton(
 						directive,
 					);
 					if (!res.ok) return getFailureMessage(res);
-					recordRequest(post);
 					return res.variants;
 				} catch (err) {
 					return err instanceof Error ? err.message : 'Could not refine comments.';

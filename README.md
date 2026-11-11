@@ -32,22 +32,25 @@ Most LinkedIn extensions force you into expensive monthly subscriptions, send yo
 
 - 🤖 **Universal AI Provider Support:**
   - **Google Gemini** (Gemini 2.5 Flash, 2.0 Pro — Free tier available)
+  - **Ollama (100% Local & Free)** (Completely private, offline local LLMs like `llama3.2`, `mistral`, `deepseek-r1`, `qwen2.5`)
   - **OpenRouter** (Access to hundreds of cloud models, including free open-source models)
-  - **Ollama** (100% offline, private, local models like `llama3.2`, `mistral`, `deepseek-r1`)
   - **OpenCode** (Local / networked AI programming assistant server `opencode serve`)
   - **OpenAI** (GPT-4o, GPT-4o-mini, o3-mini)
   - **Anthropic Claude** (Claude 3.7 Sonnet, Claude 3.5 Haiku)
   - **DeepSeek** (DeepSeek Chat V3, DeepSeek Reasoner R1)
   - **Perplexity** (Sonar, Sonar Pro with live web grounding)
   - **xAI Grok** (Grok 2, Grok 2 Vision)
-  - **Custom OpenAI-Compatible Endpoints** (LocalAI, vLLM, LM Studio, custom proxy servers)
+  - **Custom OpenAI-Compatible Endpoints** (LM Studio, LocalAI, vLLM, custom proxy servers)
+- ⚡ **Unconstrained Generation Speed:** Zero local rate limits, zero artificial cooldowns, and no requests-per-minute caps.
+- 📣 **Customizable Promotional Signature:** Append your newsletter, portfolio, or links with exact control over spacing (<kbd>Enter</kbd>, <kbd>Tab</kbd>, <kbd>Spacebar</kbd>) with zero default paragraph breaks.
+- 🧠 **Voice & Style Personalization:** Feed your profile summary and reference writing examples so generated drafts reflect your tone and vocabulary.
 - 🔄 **Dynamic Live Model Discovery:** One-click **Refresh** button dynamically queries your provider's live models catalog with smart fallback to offline defaults.
-- 🎨 **Shadcn UI & Dark/Light Theme:** Polished settings popup built with `@base-ui/react`, Tailwind CSS v4, and Geist font typography.
+- 🎨 **Modern Dark/Light UI:** Polished settings popup built with `@base-ui/react`, Tailwind CSS, and Geist typography.
 - 🎯 **Tone Matching & Custom Tones:** Pick from Professional, Witty, Supportive, or create your own custom prompt personas.
 - 📐 **Adjustable Length:** Generate short (1-2 sentences), medium (2-4 sentences), or detailed paragraphs.
 - 📝 **Native Draft Injection:** Injects comments directly into LinkedIn's active Draft.js / Lexical comment box with one click.
 - 📜 **Local Generation History:** Stores your last 50 generated comments locally in `chrome.storage.local`.
-- 🔒 **Privacy-by-Design:** No analytics, no user tracking, no ads. Uninstalling deletes all stored data.
+- 🔒 **Privacy-by-Design:** No middleman servers, no analytics, no user tracking. Uninstalling deletes all stored data.
 
 ---
 
@@ -157,7 +160,7 @@ flowchart TD
 | :--- | :--- |
 | [`manifest.json`](manifest.json) | Chrome Manifest V3 declaration, host permissions, background worker, content script rules. |
 | [`src/content/index.ts`](src/content/index.ts) | Content script injected into LinkedIn. Detects posts via `MutationObserver`, extracts post text and author, renders inline UI controls, and injects generated text into LinkedIn's editor. |
-| [`src/background/index.ts`](src/background/index.ts) | Event-driven service worker. Listens for messages (`GENERATE_COMMENTS`, `FETCH_MODELS`), handles rate limiting (5 req/min), resolves user settings, and routes requests. |
+| [`src/background/index.ts`](src/background/index.ts) | Event-driven service worker. Listens for messages (`GENERATE_COMMENTS`, `FETCH_MODELS`), resolves user settings, and routes generation requests to the chosen AI provider. |
 | [`src/lib/llm/provider.ts`](src/lib/llm/provider.ts) | Main LLM router. Directs comment requests to provider-specific implementations (`gemini.ts`, `opencode.ts`, `openai-compat.ts`, `anthropic.ts`, etc.). |
 | [`src/lib/llm/model-fetcher.ts`](src/lib/llm/model-fetcher.ts) | Fetches live model lists from provider APIs (with cache and fallback to static defaults in `registry.ts`). |
 | [`src/lib/llm/opencode.ts`](src/lib/llm/opencode.ts) | Native client for OpenCode server (`/api/experimental/generate/text` & `/api/model`). |
