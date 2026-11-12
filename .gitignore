@@ -67,3 +67,6 @@ graphify-out/
 
 # Release artifacts
 *.zip
+
+# Media & Large Demo Assets
+lcg-video.gif
