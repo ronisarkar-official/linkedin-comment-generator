@@ -19,12 +19,9 @@
 
 ## 🎬 Demo: How It Works
 
-<div align="center">
-  <a href="https://ik.imagekit.io/2zeqzsn1n/lcg-video-ezgif.com-gif-to-mp4-converter.mp4" target="_blank" rel="noopener noreferrer">
-    <img src="demo-poster.jpg" alt="LinkedIn Comment Generator Demo Video" width="100%" style="max-width: 900px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);" />
-  </a>
-  <p><sub><a href="https://ik.imagekit.io/2zeqzsn1n/lcg-video-ezgif.com-gif-to-mp4-converter.mp4" target="_blank" rel="noopener noreferrer">▶️ Click to watch the full demo video (Hosted on ImageKit Global CDN)</a></sub></p>
-</div>
+https://github.com/user-attachments/assets/a8ac9f3f-cb26-403b-9f3e-55725e1ee2d8
+
+<p align="center"><sub>▶️ Having trouble playing? Watch directly on <a href="https://ik.imagekit.io/2zeqzsn1n/lcg-video-ezgif.com-gif-to-mp4-converter.mp4" target="_blank" rel="noopener noreferrer">ImageKit Global CDN</a> or <a href="https://github.com/ronisarkar-official/linkedin-comment-generator/releases/download/v1.0.5/lcg-video-ezgif.com-gif-to-mp4-converter.mp4" target="_blank">Download MP4</a></sub></p>
 
 ---
 
