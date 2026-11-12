@@ -20,8 +20,10 @@
 ## 🎬 Demo: How It Works
 
 <div align="center">
-  <img src="https://github.com/ronisarkar-official/linkedin-comment-generator/releases/download/v1.0.5/lcg-video.gif" alt="LinkedIn Comment Generator Demo Video" width="100%" style="border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);" />
-  <p><sub><a href="https://github.com/ronisarkar-official/linkedin-comment-generator/releases/download/v1.0.5/lcg-video.gif" target="_blank" rel="noopener noreferrer">Direct link to demo video</a></sub></p>
+  <video src="https://github.com/ronisarkar-official/linkedin-comment-generator/releases/download/v1.0.5/lcg-demo.mp4" controls="controls" width="100%" style="max-width: 900px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);">
+    Your browser does not support the video tag.
+  </video>
+  <p><sub><a href="https://github.com/ronisarkar-official/linkedin-comment-generator/releases/download/v1.0.5/lcg-demo.mp4" target="_blank" rel="noopener noreferrer">▶️ Direct link to watch/download demo video (MP4)</a></sub></p>
 </div>
 
 ---
